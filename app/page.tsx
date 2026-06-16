@@ -6,7 +6,7 @@ import {
   GitBranch, Lock, Unlock, User, FileText, Save, Database,
   Terminal, AlertTriangle, ChevronRight, Code2, Layers,
   Settings, ChevronDown, ChevronUp, Github, ToggleLeft, ToggleRight,
-  CheckCircle2, XCircle, Loader2, Eye, EyeOff, Zap, Radio, Copy, Check,
+  CheckCircle2, XCircle, Loader2, Eye, EyeOff, Zap, Radio, Copy, Check, Plus,
 } from "lucide-react";
 import type { GitFile, Branch, GitPushResponse, StepResult } from "@/lib/types";
 
@@ -22,7 +22,7 @@ const USER_COLORS: Record<ActiveUser, { bg: string; text: string; border: string
 };
 
 const BRANCH_META: Record<Branch, { label: string; color: string; border: string; bg: string; badge: string; dot: string }> = {
-  dev:     { label: "Dev",     color: "text-emerald-400", border: "border-emerald-500/40", bg: "bg-emerald-900/20", badge: "bg-emerald-900/50 text-emerald-300", dot: "bg-emerald-400" },
+  dev:      { label: "Dev",      color: "text-emerald-400", border: "border-emerald-500/40", bg: "bg-emerald-900/20", badge: "bg-emerald-900/50 text-emerald-300", dot: "bg-emerald-400" },
   staging: { label: "Staging", color: "text-amber-400",   border: "border-amber-500/40",   bg: "bg-amber-900/20",   badge: "bg-amber-900/50 text-amber-300",   dot: "bg-amber-400"   },
   main:    { label: "Main",    color: "text-sky-400",     border: "border-sky-500/40",     bg: "bg-sky-900/20",     badge: "bg-sky-900/50 text-sky-300",     dot: "bg-sky-400"     },
 };
@@ -30,10 +30,10 @@ const BRANCH_META: Record<Branch, { label: string; color: string; border: string
 const BRANCH_ORDER: Branch[] = ["dev", "staging", "main"];
 
 const MOCK_FILES: GitFile[] = [
-  { id: 1, name: "auth.js",       content: "// Auth module\nfunction login(user, pass) {\n  return db.verify(user, pass);\n}",                                                current_branch: "dev",     locked_by: null, sha: null, created_at: "", updated_at: "" },
-  { id: 2, name: "api.config.js", content: "// API Config\nconst BASE_URL = 'https://api.example.com';\nconst TIMEOUT = 5000;",                                             current_branch: "dev",     locked_by: null, sha: null, created_at: "", updated_at: "" },
-  { id: 3, name: "schema.sql",    content: "-- Database Schema\nCREATE TABLE users (\n  id SERIAL PRIMARY KEY,\n  email VARCHAR(255)\n);",                                   current_branch: "staging", locked_by: null, sha: null, created_at: "", updated_at: "" },
-  { id: 4, name: "deploy.yml",    content: "# Deployment Pipeline\nstages:\n  - build\n  - test\n  - deploy",                                                               current_branch: "main",    locked_by: null, sha: null, created_at: "", updated_at: "" },
+  { id: 1, name: "auth.js",       content: "// Auth module\nfunction login(user, pass) {\n  return db.verify(user, pass);\n}",                                current_branch: "dev",     locked_by: null, sha: null, created_at: "", updated_at: "" },
+  { id: 2, name: "api.config.js", content: "// API Config\nconst BASE_URL = 'https://api.example.com';\nconst TIMEOUT = 5000;",                               current_branch: "dev",     locked_by: null, sha: null, created_at: "", updated_at: "" },
+  { id: 3, name: "schema.sql",    content: "-- Database Schema\nCREATE TABLE users (\n  id SERIAL PRIMARY KEY,\n  email VARCHAR(255)\n);",                   current_branch: "staging", locked_by: null, sha: null, created_at: "", updated_at: "" },
+  { id: 4, name: "deploy.yml",    content: "# Deployment Pipeline\nstages:\n  - build\n  - test\n  - deploy",                                               current_branch: "main",    locked_by: null, sha: null, created_at: "", updated_at: "" },
   { id: 5, name: "utils.js",      content: "// Utility Functions\nconst formatDate = (d) => d.toISOString();\nconst slugify = (s) => s.toLowerCase().replace(/ /g,'-');",   current_branch: "dev",     locked_by: null, sha: null, created_at: "", updated_at: "" },
 ];
 
@@ -50,6 +50,11 @@ export default function Dashboard() {
   const [activeUser, setActiveUser] = useState<ActiveUser>("User A");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editorContent, setEditorContent] = useState("");
+
+  // Add New File States
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newFileName, setNewFileName] = useState("");
+  const [newFileContent, setNewFileContent] = useState("");
 
   // infra config
   const [infraOpen, setInfraOpen] = useState(true);
@@ -98,7 +103,6 @@ export default function Dashboard() {
 
   // ── file selection ────────────────────────────────────────────────────────
   const selectFile = async (file: GitFile) => {
-    // Release any lock the active user holds on another file
     setFiles(prev => prev.map(f => f.locked_by === activeUser && f.id !== file.id ? { ...f, locked_by: null } : f));
 
     if (file.locked_by && file.locked_by !== activeUser) {
@@ -166,6 +170,32 @@ export default function Dashboard() {
     addLog(`${activeUser} promoted "${file.name}" ${BRANCH_META[file.current_branch].label} → ${BRANCH_META[toBranch].label}.`, "success");
   };
 
+  // ── add new file action ───────────────────────────────────────────────────
+  const handleAddFile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFileName.trim()) return;
+
+    const formattedName = newFileName.trim().replace(/\s+/g, "-");
+    const newFile: GitFile = {
+      id: Date.now(),
+      name: formattedName.includes(".") ? formattedName : `${formattedName}.js`,
+      content: newFileContent || "// New file template initialized",
+      current_branch: "dev",
+      locked_by: null,
+      sha: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    setFiles(prev => [...prev, newFile]);
+    addLog(`✓ Created new file "${newFile.name}" on branch [Dev]`, "success");
+    
+    // reset states
+    setNewFileName("");
+    setNewFileContent("");
+    setIsModalOpen(false);
+  };
+
   // ── infra actions ──────────────────────────────────────────────────────────
   const testDb = () => {
     if (!neonConn) { addLog("Neon connection string is empty.", "error"); return; }
@@ -199,7 +229,6 @@ export default function Dashboard() {
       return;
     }
 
-    // Build request payload
     const requestBody = {
       fileId: selectedFile.id,
       fileName: selectedFile.name,
@@ -228,7 +257,6 @@ export default function Dashboard() {
 
       const data: GitPushResponse = await res.json();
 
-      // Stream steps into terminal with artificial delay for visual effect
       data.steps.forEach((step, i) => {
         setTimeout(() => {
           setTermLines(prev => [...prev, { ...step, ts: ts() }]);
@@ -285,6 +313,11 @@ export default function Dashboard() {
           {loading && <Loader2 size={12} className="text-sky-400 animate-spin" />}
         </div>
         <div className="flex items-center gap-3">
+          {/* Action Button for adding file */}
+          <button onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all border border-emerald-500 shadow-md shadow-emerald-950/50">
+            <Plus size={11} /> Add File
+          </button>
           <span className="text-gray-600 text-xs">{useLive ? "REST API Mode" : "Mock Data Mode"}</span>
           <button onClick={() => setInfraOpen(o => !o)}
             className={`flex items-center gap-1 px-2 py-1 rounded text-xs border transition-all ${infraOpen ? "bg-indigo-900/60 border-indigo-500 text-indigo-300" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500"}`}>
@@ -551,63 +584,78 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* Activity Log */}
-          <div className="h-44 flex flex-col border-t border-gray-800 bg-gray-950">
-            <div className="px-3 py-1.5 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider flex items-center gap-2">
-              <Terminal size={10} /> Activity Log
+          {/* Logs Panel */}
+          <div className="bg-gray-950 p-3 h-40 border-t border-gray-800 flex flex-col overflow-hidden">
+            <div className="text-gray-500 text-[10px] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Terminal size={10} /> Live Output Stream
             </div>
-            <div className="flex-1 overflow-y-auto px-2 py-1">
-              {logs.map((log, i) => {
-                const col = log.type === "success" ? "text-emerald-400" : log.type === "error" ? "text-red-400" : log.type === "warn" ? "text-amber-400" : log.type === "system" ? "text-sky-400/70" : "text-gray-400";
-                return (
-                  <div key={i} className="flex gap-2 text-xs mb-0.5">
-                    <span className="text-gray-700 flex-shrink-0">{log.time}</span>
-                    <span className={col}>{log.msg}</span>
-                  </div>
-                );
-              })}
+            <div className="flex-1 overflow-y-auto space-y-1 text-gray-400 font-mono text-[11px]">
+              {logs.map((log, i) => (
+                <div key={i} className="flex gap-2">
+                  <span className="text-gray-600">[{log.time}]</span>
+                  <span className={log.type === "success" ? "text-emerald-400" : log.type === "error" ? "text-red-400" : log.type === "warn" ? "text-amber-400" : "text-gray-300"}>
+                    {log.msg}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
+
       </div>
 
-      {/* DB Table */}
-      <div className="bg-gray-900 border-t border-gray-800" style={{ maxHeight: 170 }}>
-        <div className="px-4 py-1.5 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider flex items-center gap-2">
-          <Database size={10} /> PostgreSQL ·<span className="text-gray-600">table:</span> <span className="text-emerald-400 font-bold">git_files</span>
-          {useLive && <span className="ml-2 text-emerald-400/60 text-xs flex items-center gap-1"><Radio size={8} className="animate-pulse" /> live sync</span>}
+      {/* DYNAMIC MODAL POPUP FOR ADD NEW FILE */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-gray-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-200">
+          <div className="bg-gray-900 border border-gray-800 w-full max-w-md rounded-xl p-5 shadow-2xl relative" style={{ fontFamily: "'Fira Code', monospace" }}>
+            <h3 className="text-sm font-bold text-gray-100 mb-1 flex items-center gap-2 uppercase tracking-wider">
+              <Plus size={14} className="text-emerald-400" /> Create New Repository File
+            </h3>
+            <p className="text-[11px] text-gray-500 mb-4">File will be added into the [Dev] branch pipeline automatically.</p>
+            
+            <form onSubmit={handleAddFile} className="space-y-4">
+              <div>
+                <label className="block text-[10px] uppercase text-gray-400 mb-1 font-bold tracking-wider">File Name</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g., billing-route.js, schema-v2.sql"
+                  value={newFileName}
+                  onChange={(e) => setNewFileName(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-xs text-gray-200 focus:outline-none focus:border-indigo-500 transition-all font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-gray-400 mb-1 font-bold tracking-wider">File Content / Code</label>
+                <textarea 
+                  rows={6}
+                  placeholder="// Write mock js functions, configs, or queries here..."
+                  value={newFileContent}
+                  onChange={(e) => setNewFileContent(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-xs text-emerald-400 focus:outline-none focus:border-indigo-500 transition-all font-mono resize-none leading-relaxed"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-3 py-1.5 border border-gray-700 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded text-xs transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs shadow-md transition-all border border-emerald-500"
+                >
+                  Create File
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-        <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 130 }}>
-          <table className="w-full text-xs border-collapse">
-            <thead className="sticky top-0 bg-gray-900 z-10">
-              <tr className="text-gray-600 uppercase tracking-wider">
-                {["id", "name", "content (preview)", "current_branch", "locked_by"].map(h => (
-                  <th key={h} className="px-3 py-1.5 text-left border-b border-gray-800 font-semibold whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {files.map((f, i) => {
-                const bc = BRANCH_META[f.current_branch];
-                const lc = f.locked_by ? USER_COLORS[f.locked_by as ActiveUser] : null;
-                return (
-                  <tr key={f.id} className={`border-b border-gray-800/40 ${i % 2 === 0 ? "bg-gray-950/40" : ""} hover:bg-gray-800/30`}>
-                    <td className="px-3 py-1.5 text-gray-600">{f.id}</td>
-                    <td className="px-3 py-1.5 text-sky-300 font-semibold whitespace-nowrap">{f.name}</td>
-                    <td className="px-3 py-1.5 text-gray-500 truncate" style={{ maxWidth: 180 }}>{f.content.replace(/\n/g, " ").slice(0, 55)}…</td>
-                    <td className="px-3 py-1.5"><span className={`px-2 py-0.5 rounded-full text-xs ${bc.badge}`}>{bc.label}</span></td>
-                    <td className="px-3 py-1.5">
-                      {f.locked_by && lc
-                        ? <span className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 w-fit ${lc.badge}`}><Lock size={8} />{f.locked_by}</span>
-                        : <span className="text-gray-700 flex items-center gap-1"><Unlock size={8} /> NULL</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
