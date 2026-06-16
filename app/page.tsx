@@ -6,7 +6,7 @@ import {
   GitBranch, Lock, Unlock, User, FileText, Save, Database,
   Terminal, AlertTriangle, ChevronRight, Code2, Layers,
   Settings, ChevronDown, ChevronUp, Github, ToggleLeft, ToggleRight,
-  CheckCircle2, XCircle, Loader2, Eye, EyeOff, Zap, Radio, Copy, Check,
+  CheckCircle2, XCircle, Loader2, Eye, EyeOff, Zap, Radio, Copy, Check, Plus
 } from "lucide-react";
 import type { GitFile, Branch, GitPushResponse, StepResult } from "@/lib/types";
 
@@ -22,17 +22,17 @@ const USER_COLORS: Record<ActiveUser, { bg: string; text: string; border: string
 };
 
 const BRANCH_META: Record<Branch, { label: string; color: string; border: string; bg: string; badge: string; dot: string }> = {
-  dev:     { label: "Dev",     color: "text-emerald-400", border: "border-emerald-500/40", bg: "bg-emerald-900/20", badge: "bg-emerald-900/50 text-emerald-300", dot: "bg-emerald-400" },
+  dev:     { label: "Dev",      color: "text-emerald-400", border: "border-emerald-500/40", bg: "bg-emerald-900/20", badge: "bg-emerald-900/50 text-emerald-300", dot: "bg-emerald-400" },
   staging: { label: "Staging", color: "text-amber-400",   border: "border-amber-500/40",   bg: "bg-amber-900/20",   badge: "bg-amber-900/50 text-amber-300",   dot: "bg-amber-400"   },
-  main:    { label: "Main",    color: "text-sky-400",     border: "border-sky-500/40",     bg: "bg-sky-900/20",     badge: "bg-sky-900/50 text-sky-300",     dot: "bg-sky-400"     },
+  main:    { label: "Main",     color: "text-sky-400",      border: "border-sky-500/40",     bg: "bg-sky-900/20",     badge: "bg-sky-900/50 text-sky-300",     dot: "bg-sky-400"     },
 };
 
 const BRANCH_ORDER: Branch[] = ["dev", "staging", "main"];
 
 const MOCK_FILES: GitFile[] = [
-  { id: 1, name: "auth.js",       content: "// Auth module\nfunction login(user, pass) {\n  return db.verify(user, pass);\n}",                                                current_branch: "dev",     locked_by: null, sha: null, created_at: "", updated_at: "" },
-  { id: 2, name: "api.config.js", content: "// API Config\nconst BASE_URL = 'https://api.example.com';\nconst TIMEOUT = 5000;",                                             current_branch: "dev",     locked_by: null, sha: null, created_at: "", updated_at: "" },
-  { id: 3, name: "schema.sql",    content: "-- Database Schema\nCREATE TABLE users (\n  id SERIAL PRIMARY KEY,\n  email VARCHAR(255)\n);",                                   current_branch: "staging", locked_by: null, sha: null, created_at: "", updated_at: "" },
+  { id: 1, name: "auth.js",       content: "// Auth module\nfunction login(user, pass) {\n  return db.verify(user, pass);\n}",                                current_branch: "dev",     locked_by: null, sha: null, created_at: "", updated_at: "" },
+  { id: 2, name: "api.config.js", content: "// API Config\nconst BASE_URL = 'https://api.example.com';\nconst TIMEOUT = 5000;",                               current_branch: "dev",     locked_by: null, sha: null, created_at: "", updated_at: "" },
+  { id: 3, name: "schema.sql",    content: "-- Database Schema\nCREATE TABLE users (\n  id SERIAL PRIMARY KEY,\n  email VARCHAR(255)\n);",                               current_branch: "staging", locked_by: null, sha: null, created_at: "", updated_at: "" },
   { id: 4, name: "deploy.yml",    content: "# Deployment Pipeline\nstages:\n  - build\n  - test\n  - deploy",                                                               current_branch: "main",    locked_by: null, sha: null, created_at: "", updated_at: "" },
   { id: 5, name: "utils.js",      content: "// Utility Functions\nconst formatDate = (d) => d.toISOString();\nconst slugify = (s) => s.toLowerCase().replace(/ /g,'-');",   current_branch: "dev",     locked_by: null, sha: null, created_at: "", updated_at: "" },
 ];
@@ -61,6 +61,11 @@ export default function Dashboard() {
   const [dbStatus, setDbStatus]   = useState<null | "testing" | "ok" | "fail">(null);
   const [gitStatus, setGitStatus] = useState<null | "testing" | "ok" | "fail">(null);
   const [copied, setCopied]       = useState(false);
+
+  // add file states
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [newFileName, setNewFileName] = useState("");
+  const [newFileContent, setNewFileContent] = useState("");
 
   // terminal
   const [termOpen, setTermOpen]   = useState(false);
@@ -98,7 +103,6 @@ export default function Dashboard() {
 
   // ── file selection ────────────────────────────────────────────────────────
   const selectFile = async (file: GitFile) => {
-    // Release any lock the active user holds on another file
     setFiles(prev => prev.map(f => f.locked_by === activeUser && f.id !== file.id ? { ...f, locked_by: null } : f));
 
     if (file.locked_by && file.locked_by !== activeUser) {
@@ -189,6 +193,45 @@ export default function Dashboard() {
     }, 2000);
   };
 
+  // ── handle creation of a new file ──────────────────────────────────────────
+  const handleCreateFile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFileName.trim()) return;
+
+    const formattedName = newFileName.trim().replace(/\s+/g, "-");
+    const newFile: GitFile = {
+      id: Date.now(),
+      name: formattedName.includes(".") ? formattedName : `${formattedName}.js`,
+      content: newFileContent || "// New file template initialized",
+      current_branch: "dev",
+      locked_by: null,
+      sha: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (useLive) {
+      try {
+        const res = await fetch("/api/files", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newFile)
+        });
+        if (!res.ok) throw new Error("Neon Database rejected row creation.");
+        addLog(`✓ Saved "${newFile.name}" permanently into Neon Database storage.`, "success");
+      } catch (err) {
+        addLog(`✗ Sync Error: ${err instanceof Error ? err.message : String(err)}`, "error");
+      }
+    }
+
+    setFiles(prev => [...prev, newFile]);
+    addLog(`✓ Created new file "${newFile.name}" on branch [Dev]`, "success");
+
+    setNewFileName("");
+    setNewFileContent("");
+    setAddModalOpen(false);
+  };
+
   // ── save / push ────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!selectedFile || selectedFile.locked_by !== activeUser) return;
@@ -199,7 +242,6 @@ export default function Dashboard() {
       return;
     }
 
-    // Build request payload
     const requestBody = {
       fileId: selectedFile.id,
       fileName: selectedFile.name,
@@ -228,7 +270,6 @@ export default function Dashboard() {
 
       const data: GitPushResponse = await res.json();
 
-      // Stream steps into terminal with artificial delay for visual effect
       data.steps.forEach((step, i) => {
         setTimeout(() => {
           setTermLines(prev => [...prev, { ...step, ts: ts() }]);
@@ -269,7 +310,7 @@ export default function Dashboard() {
 
   // ── render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col" style={{ fontFamily: "'Fira Code', monospace", fontSize: 12 }}>
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col relative" style={{ fontFamily: "'Fira Code', monospace", fontSize: 12 }}>
 
       {/* Header */}
       <div className="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex items-center justify-between sticky top-0 z-30">
@@ -385,8 +426,11 @@ export default function Dashboard() {
 
         {/* File List */}
         <div className="col-span-3 bg-gray-900/50 border-r border-gray-800 flex flex-col overflow-hidden">
-          <div className="px-3 py-2 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider flex items-center gap-2">
-            <FileText size={10} /> Repository Files
+          <div className="px-3 py-2 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider flex items-center justify-between">
+            <span className="flex items-center gap-2"><FileText size={10} /> Repository Files</span>
+            <button onClick={() => setAddModalOpen(true)} className="flex items-center gap-0.5 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-950/50 px-1.5 py-0.5 rounded transition-all text-[10px] font-bold">
+              <Plus size={10} /> Add File
+            </button>
           </div>
           <div className="flex-1 overflow-y-auto">
             {files.map(file => {
@@ -541,7 +585,7 @@ export default function Dashboard() {
                               <ChevronRight size={8} /> {BRANCH_META[nextBranch].label}
                             </button>
                           )}
-                          {byOther && nextBranch && <span className="text-red-400/60 text-xs flex-shrink-0">🔒</span>}
+                          {byOther && nextBranch && <span className="text-red-400/50 text-[10px]">locked</span>}
                         </div>
                       );
                     })}
@@ -551,63 +595,82 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* Activity Log */}
-          <div className="h-44 flex flex-col border-t border-gray-800 bg-gray-950">
+          {/* System Streams Log Panel */}
+          <div className="h-44 bg-gray-950 flex flex-col overflow-hidden">
             <div className="px-3 py-1.5 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider flex items-center gap-2">
-              <Terminal size={10} /> Activity Log
+              <Terminal size={10} /> Live System Logs
             </div>
-            <div className="flex-1 overflow-y-auto px-2 py-1">
-              {logs.map((log, i) => {
-                const col = log.type === "success" ? "text-emerald-400" : log.type === "error" ? "text-red-400" : log.type === "warn" ? "text-amber-400" : log.type === "system" ? "text-sky-400/70" : "text-gray-400";
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 font-mono text-[11px]">
+              {logs.map((log, idx) => {
+                let color = "text-gray-400";
+                if (log.type === "success") color = "text-emerald-400";
+                if (log.type === "error")   color = "text-red-400";
+                if (log.type === "warn")    color = "text-amber-400";
+                if (log.type === "system")  color = "text-indigo-400 font-bold";
+
                 return (
-                  <div key={i} className="flex gap-2 text-xs mb-0.5">
-                    <span className="text-gray-700 flex-shrink-0">{log.time}</span>
-                    <span className={col}>{log.msg}</span>
+                  <div key={idx} className={`flex gap-2 leading-tight ${color}`}>
+                    <span className="text-gray-600 flex-shrink-0">[{log.time}]</span>
+                    <span>{log.msg}</span>
                   </div>
                 );
               })}
             </div>
           </div>
+
         </div>
       </div>
 
-      {/* DB Table */}
-      <div className="bg-gray-900 border-t border-gray-800" style={{ maxHeight: 170 }}>
-        <div className="px-4 py-1.5 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider flex items-center gap-2">
-          <Database size={10} /> PostgreSQL ·<span className="text-gray-600">table:</span> <span className="text-emerald-400 font-bold">git_files</span>
-          {useLive && <span className="ml-2 text-emerald-400/60 text-xs flex items-center gap-1"><Radio size={8} className="animate-pulse" /> live sync</span>}
+      {/* ─── ADD FILE MODAL DIALOG OVERLAY ─── */}
+      {addModalOpen && (
+        <div className="absolute inset-0 bg-gray-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border-2 border-indigo-500/50 rounded-lg w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="bg-gray-950 px-4 py-3 border-b border-gray-800 flex items-center gap-2 text-indigo-400">
+              <Plus size={14} />
+              <span className="font-bold text-xs uppercase tracking-wider">Create New Repository File</span>
+            </div>
+            <form onSubmit={handleCreateFile} className="p-4 space-y-3.5">
+              <div>
+                <label className="block text-gray-500 text-[11px] uppercase mb-1">File Name</label>
+                <input 
+                  type="text"
+                  required
+                  placeholder="payment-service.js"
+                  value={newFileName}
+                  onChange={e => setNewFileName(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-700 rounded px-2.5 py-2 text-xs text-gray-200 outline-none focus:border-indigo-500 font-mono transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-500 text-[11px] uppercase mb-1">Initial Template Content (Optional)</label>
+                <textarea 
+                  placeholder="// Initialize modules here..."
+                  value={newFileContent}
+                  onChange={e => setNewFileContent(e.target.value)}
+                  rows={4}
+                  className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-xs text-gray-300 outline-none focus:border-indigo-500 font-mono resize-none leading-relaxed transition-colors"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-1 border-t border-gray-800/60">
+                <button 
+                  type="button" 
+                  onClick={() => { setAddModalOpen(false); setNewFileName(""); setNewFileContent(""); }}
+                  className="px-3 py-1.5 rounded text-xs bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-500 hover:text-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-1.5 rounded text-xs bg-emerald-700 hover:bg-emerald-600 border border-emerald-500 text-white font-bold transition-all shadow-md"
+                >
+                  Create & Branch Dev
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-        <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 130 }}>
-          <table className="w-full text-xs border-collapse">
-            <thead className="sticky top-0 bg-gray-900 z-10">
-              <tr className="text-gray-600 uppercase tracking-wider">
-                {["id", "name", "content (preview)", "current_branch", "locked_by"].map(h => (
-                  <th key={h} className="px-3 py-1.5 text-left border-b border-gray-800 font-semibold whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {files.map((f, i) => {
-                const bc = BRANCH_META[f.current_branch];
-                const lc = f.locked_by ? USER_COLORS[f.locked_by as ActiveUser] : null;
-                return (
-                  <tr key={f.id} className={`border-b border-gray-800/40 ${i % 2 === 0 ? "bg-gray-950/40" : ""} hover:bg-gray-800/30`}>
-                    <td className="px-3 py-1.5 text-gray-600">{f.id}</td>
-                    <td className="px-3 py-1.5 text-sky-300 font-semibold whitespace-nowrap">{f.name}</td>
-                    <td className="px-3 py-1.5 text-gray-500 truncate" style={{ maxWidth: 180 }}>{f.content.replace(/\n/g, " ").slice(0, 55)}…</td>
-                    <td className="px-3 py-1.5"><span className={`px-2 py-0.5 rounded-full text-xs ${bc.badge}`}>{bc.label}</span></td>
-                    <td className="px-3 py-1.5">
-                      {f.locked_by && lc
-                        ? <span className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 w-fit ${lc.badge}`}><Lock size={8} />{f.locked_by}</span>
-                        : <span className="text-gray-700 flex items-center gap-1"><Unlock size={8} /> NULL</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
+
     </div>
   );
 }
