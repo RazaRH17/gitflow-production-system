@@ -49,7 +49,7 @@ export default function Dashboard() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editorContent, setEditorContent] = useState("");
 
-  // infra config (Hamesha true rakha hai taaki panel dikhta rahe)
+  // infra config states
   const [infraOpen, setInfraOpen] = useState(true);
   const [neonConn, setNeonConn]   = useState("");
   const [ghToken, setGhToken]     = useState("");
@@ -58,7 +58,6 @@ export default function Dashboard() {
   const [useLive, setUseLive]     = useState(false);
   const [dbStatus, setDbStatus]   = useState<null | "testing" | "ok" | "fail">(null);
   const [gitStatus, setGitStatus] = useState<null | "testing" | "ok" | "fail">(null);
-  const [copied, setCopied]       = useState(false);
 
   // add file states
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -173,19 +172,19 @@ export default function Dashboard() {
     setTimeout(() => {
       const ok = neonConn.startsWith("postgresql://") || neonConn.startsWith("postgres://");
       setDbStatus(ok ? "ok" : "fail");
-      addLog(ok ? "✓ Neon DB connection verified — latency 42ms." : "✗ Invalid connection string format.", ok ? "success" : "error");
-    }, 1800);
+      addLog(ok ? "✓ Neon DB connection verified." : "✗ Invalid connection string format.", ok ? "success" : "error");
+    }, 1500);
   };
 
   const verifyGit = () => {
     if (!ghToken || !ghRepo) { addLog("GitHub PAT and repository name are required.", "error"); return; }
     setGitStatus("testing");
-    addLog(`Verifying GitHub webhook for repo "${ghRepo}"…`, "info");
+    addLog(`Verifying GitHub repo "${ghRepo}"…`, "info");
     setTimeout(() => {
       const ok = ghToken.length >= 10 && ghRepo.includes("/");
       setGitStatus(ok ? "ok" : "fail");
-      addLog(ok ? `✓ GitHub webhook verified — repo "${ghRepo}" reachable.` : "✗ Invalid PAT or repo format (use owner/repo).", ok ? "success" : "error");
-    }, 2000);
+      addLog(ok ? `✓ GitHub verified successfully.` : "✗ Invalid PAT or repo format.", ok ? "success" : "error");
+    }, 1500);
   };
 
   const handleCreateFile = async (e: React.FormEvent) => {
@@ -196,7 +195,7 @@ export default function Dashboard() {
     const newFile: GitFile = {
       id: Date.now(),
       name: formattedName.includes(".") ? formattedName : `${formattedName}.js`,
-      content: newFileContent || "// New file template initialized",
+      content: newFileContent || "// New file template",
       current_branch: "dev",
       locked_by: null,
       sha: null,
@@ -211,16 +210,15 @@ export default function Dashboard() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(newFile)
         });
-        if (!res.ok) throw new Error("Neon Database rejected row creation.");
-        addLog(`✓ Saved "${newFile.name}" permanently into Neon Database storage.`, "success");
+        if (!res.ok) throw new Error("Database error");
+        addLog(`✓ Saved "${newFile.name}" to Neon DB permanently.`, "success");
       } catch (err) {
         addLog(`✗ Sync Error: ${err instanceof Error ? err.message : String(err)}`, "error");
       }
     }
 
     setFiles(prev => [...prev, newFile]);
-    addLog(`✓ Created new file "${newFile.name}" on branch [Dev]`, "success");
-
+    addLog(`✓ Created file "${newFile.name}" on [Dev]`, "success");
     setNewFileName("");
     setNewFileContent("");
     setAddModalOpen(false);
@@ -231,7 +229,7 @@ export default function Dashboard() {
 
     if (!useLive) {
       setFiles(prev => prev.map(f => f.id === selectedFile.id ? { ...f, content: editorContent, current_branch: "dev" } : f));
-      addLog(`${activeUser} saved "${selectedFile.name}" → dev (mock).`, "success");
+      addLog(`${activeUser} saved "${selectedFile.name}" (mock mode).`, "success");
       return;
     }
 
@@ -248,7 +246,6 @@ export default function Dashboard() {
     setTermLines([]);
     setTermDone(false);
     setTermOpen(true);
-    addLog(`Live push initiated for "${selectedFile.name}" by ${activeUser}.`, "info");
 
     try {
       const res = await fetch("/api/git-push", {
@@ -262,7 +259,6 @@ export default function Dashboard() {
       });
 
       const data: GitPushResponse = await res.json();
-
       data.steps.forEach((step, i) => {
         setTimeout(() => {
           setTermLines(prev => [...prev, { ...step, ts: ts() }]);
@@ -270,24 +266,17 @@ export default function Dashboard() {
             setTermDone(true);
             if (data.success) {
               setFiles(prev => prev.map(f => f.id === selectedFile.id ? { ...f, content: editorContent, current_branch: "dev" } : f));
-              addLog(`✓ "${selectedFile.name}" pushed to dev — DB & GitHub updated.`, "success");
+              addLog(`✓ "${selectedFile.name}" successfully synced with Live Services.`, "success");
             } else {
               addLog(`✗ Push failed: ${data.message}`, "error");
             }
           }
-        }, (i + 1) * 600);
+        }, (i + 1) * 500);
       });
     } catch (err) {
       setTermLines(prev => [...prev, { step: 0, label: "Network error", status: "error", detail: String(err), durationMs: 0, ts: ts() }]);
       setTermDone(true);
-      addLog(`Network error during push: ${err}`, "error");
     }
-  };
-
-  const copyPayload = () => {
-    navigator.clipboard?.writeText(rawPayload);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   useEffect(() => { if (termRef.current) termRef.current.scrollTop = termRef.current.scrollHeight; }, [termLines]);
@@ -302,10 +291,10 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col relative" style={{ fontFamily: "'Fira Code', monospace", fontSize: 12 }}>
+    <div className="w-full min-h-screen bg-gray-950 text-gray-100 flex flex-col relative" style={{ fontFamily: "'Fira Code', monospace", fontSize: 12 }}>
 
-      {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex items-center justify-between sticky top-0 z-30">
+      {/* 1. Fixed Header */}
+      <div className="w-full bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
@@ -313,132 +302,123 @@ export default function Dashboard() {
             <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
           </div>
           <GitBranch size={14} className="text-emerald-400" />
-          <span className="text-gray-300 font-semibold text-xs tracking-widest uppercase">GitFlow · File Management System</span>
-          {useLive && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 text-xs border border-emerald-500/40"><Radio size={9} className="animate-pulse" /> LIVE</span>}
-          {loading && <Loader2 size={12} className="text-sky-400 animate-spin" />}
+          <span className="text-gray-200 font-bold tracking-wider uppercase text-xs">GitFlow Infra Manager</span>
+          {useLive && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-900 text-emerald-300 border border-emerald-500 text-[10px]"><Radio size={9} className="animate-pulse" /> LIVE SYNC</span>}
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-gray-600 text-xs">{useLive ? "REST API Mode" : "Mock Data Mode"}</span>
-          <button onClick={() => setInfraOpen(o => !o)}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs border transition-all ${infraOpen ? "bg-indigo-900/60 border-indigo-500 text-indigo-300" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500"}`}>
-            <Settings size={10} /> Infra Config {infraOpen ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
-          </button>
-        </div>
+        <button onClick={() => setInfraOpen(o => !o)}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded border transition-all text-xs font-semibold ${infraOpen ? "bg-indigo-950 border-indigo-500 text-indigo-300" : "bg-gray-800 border-gray-700 text-gray-400"}`}>
+          <Settings size={12} /> Database & GitHub Config {infraOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+        </button>
       </div>
 
-      {/* Infra Config Panel (Postgres and GitHub fields) */}
+      {/* 2. DEDICATED FULL-WIDTH INFRA PANEL (Now independent of columns to avoid getting squeezed) */}
       {infraOpen && (
-        <div className="bg-gray-900/95 border-b-2 border-indigo-500/50 px-4 py-3 z-20">
-          <div className="grid grid-cols-12 gap-3">
-            {/* Neon Postgres Connection Info */}
-            <div className="col-span-5 bg-gray-950/80 rounded-lg border border-gray-800 p-3">
-              <div className="flex items-center gap-2 mb-2.5">
-                <Database size={12} className="text-emerald-400" />
-                <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">Neon PostgreSQL</span>
+        <div className="w-full bg-gray-900 border-b-2 border-indigo-500 p-4 block">
+          <div className="w-full flex flex-col md:flex-row gap-4 items-stretch">
+            
+            {/* Postgres Panel */}
+            <div className="flex-1 min-w-[280px] bg-gray-950 rounded-lg border border-gray-800 p-3.5 shadow-inner">
+              <div className="flex items-center gap-2 mb-2">
+                <Database size={14} className="text-emerald-400" />
+                <span className="font-bold text-gray-200 uppercase tracking-wider text-xs">Neon PostgreSQL Configuration</span>
                 <StatusBadge status={dbStatus} />
-                {dbStatus === "ok"   && <span className="text-emerald-400 text-xs">Connected</span>}
-                {dbStatus === "fail" && <span className="text-red-400 text-xs">Failed</span>}
               </div>
               <div className="flex gap-2">
                 <input value={neonConn} onChange={e => setNeonConn(e.target.value)}
-                  placeholder="postgresql://user:pass@ep-xxx.neon.tech/dbname"
-                  className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-300 placeholder-gray-700 outline-none focus:border-indigo-500 transition-colors" />
+                  placeholder="postgresql://user:pass@ep-silent-cloud-xxxx.neon.tech/neondb"
+                  className="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-xs text-emerald-300 font-mono outline-none focus:border-indigo-500" />
                 <button onClick={testDb} disabled={dbStatus === "testing"}
-                  className="px-3 py-1.5 rounded text-xs bg-emerald-800 hover:bg-emerald-700 border border-emerald-600 text-emerald-200 transition-all disabled:opacity-50 whitespace-nowrap flex items-center gap-1">
-                  {dbStatus === "testing" ? <Loader2 size={9} className="animate-spin" /> : null} Test
+                  className="px-4 py-2 rounded text-xs bg-emerald-800 hover:bg-emerald-700 font-bold text-white border border-emerald-600 transition-all disabled:opacity-50 flex items-center gap-1">
+                  Connect
                 </button>
               </div>
-              {dbStatus === "ok" && <div className="mt-2 text-xs text-emerald-400/70">✓ Latency: 42ms · Pool: 5/10 active</div>}
+              <p className="text-[10px] text-gray-500 mt-1.5">Enter your Neon connection string to enable automated row locks syncing.</p>
             </div>
 
-            {/* GitHub Webhook Info */}
-            <div className="col-span-5 bg-gray-950/80 rounded-lg border border-gray-800 p-3">
-              <div className="flex items-center gap-2 mb-2.5">
-                <Github size={12} className="text-gray-300" />
-                <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">GitHub Webhook</span>
+            {/* GitHub Panel */}
+            <div className="flex-1 min-w-[280px] bg-gray-950 rounded-lg border border-gray-800 p-3.5 shadow-inner">
+              <div className="flex items-center gap-2 mb-2">
+                <Github size={14} className="text-indigo-400" />
+                <span className="font-bold text-gray-200 uppercase tracking-wider text-xs">GitHub Repository Integration</span>
                 <StatusBadge status={gitStatus} />
-                {gitStatus === "ok"   && <span className="text-emerald-400 text-xs">Verified</span>}
-                {gitStatus === "fail" && <span className="text-red-400 text-xs">Failed</span>}
               </div>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
                   <input value={ghToken} onChange={e => setGhToken(e.target.value)} type={showToken ? "text" : "password"}
-                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-300 placeholder-gray-700 outline-none focus:border-indigo-500 pr-7" />
-                  <button onClick={() => setShowToken(s => !s)} className="absolute right-2 top-1.5 text-gray-600 hover:text-gray-400">
-                    {showToken ? <EyeOff size={10} /> : <Eye size={10} />}
+                    placeholder="GitHub Personal Access Token (ghp_...)"
+                    className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 outline-none focus:border-indigo-500 pr-8" />
+                  <button type="button" onClick={() => setShowToken(s => !s)} className="absolute right-2.5 top-2.5 text-gray-500 hover:text-gray-300">
+                    {showToken ? <EyeOff size={12} /> : <Eye size={12} />}
                   </button>
                 </div>
-                <input value={ghRepo} onChange={e => setGhRepo(e.target.value)} placeholder="owner/repo"
-                  className="w-28 bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-300 placeholder-gray-700 outline-none focus:border-indigo-500" />
+                <input value={ghRepo} onChange={e => setGhRepo(e.target.value)} placeholder="owner/repo-name"
+                  className="w-36 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 outline-none focus:border-indigo-500" />
                 <button onClick={verifyGit} disabled={gitStatus === "testing"}
-                  className="px-3 py-1.5 rounded text-xs bg-indigo-800 hover:bg-indigo-700 border border-indigo-600 text-indigo-200 transition-all disabled:opacity-50 whitespace-nowrap flex items-center gap-1">
-                  {gitStatus === "testing" ? <Loader2 size={9} className="animate-spin" /> : <Github size={9} />} Verify
+                  className="px-4 py-2 rounded text-xs bg-indigo-800 hover:bg-indigo-700 font-bold text-white border border-indigo-600 transition-all disabled:opacity-50">
+                  Verify Git
                 </button>
               </div>
+              <p className="text-[10px] text-gray-500 mt-1.5">Connect repo to route code pushes to feature branches automatically.</p>
             </div>
 
-            {/* Live Mode Toggle */}
-            <div className="col-span-2 bg-gray-950/80 rounded-lg border border-gray-800 p-3 flex flex-col justify-between">
-              <div className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <Zap size={11} className="text-amber-400" /> Data Source
-              </div>
-              <button onClick={() => { setUseLive(v => !v); addLog(`Switched to ${!useLive ? "Live REST API" : "Mock Data"} mode.`, "system"); }}
-                className={`flex items-center gap-2 px-2 py-2 rounded border transition-all w-full ${useLive ? "bg-emerald-900/50 border-emerald-500 text-emerald-300" : "bg-gray-800 border-gray-700 text-gray-400"}`}>
-                {useLive ? <ToggleRight size={16} className="text-emerald-400" /> : <ToggleLeft size={16} className="text-gray-500" />}
-                <div className="text-left">
-                  <div className="text-xs font-bold leading-none">{useLive ? "LIVE API" : "MOCK DATA"}</div>
-                  <div className="text-xs text-gray-600 leading-none mt-0.5">{useLive ? "REST payloads" : "static state"}</div>
+            {/* Live Mode Controls */}
+            <div className="w-full md:w-56 bg-gray-950 rounded-lg border border-gray-800 p-3.5 flex flex-col justify-between">
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><Zap size={12} className="text-amber-400" /> Mode Switcher</div>
+              <button onClick={() => { setUseLive(v => !v); addLog(`Switched sync Engine.`, "system"); }}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded border transition-all mt-2 w-full ${useLive ? "bg-emerald-950/80 border-emerald-500 text-emerald-400" : "bg-gray-800 border-gray-700 text-gray-400"}`}>
+                {useLive ? <ToggleRight size={20} className="text-emerald-400" /> : <ToggleLeft size={20} className="text-gray-500" />}
+                <div className="text-left leading-tight">
+                  <div className="text-xs font-bold">{useLive ? "LIVE REST API" : "MOCK ENGINE"}</div>
+                  <div className="text-[10px] text-gray-500">Click to swap</div>
                 </div>
               </button>
             </div>
+
           </div>
         </div>
       )}
 
-      {/* User Bar */}
-      <div className="bg-gray-900/70 border-b border-gray-800 px-4 py-2 flex items-center gap-3">
-        <div className="flex items-center gap-1.5 text-gray-500 text-xs mr-1"><User size={11} /> ACTIVE SESSION:</div>
-        {USERS.map(u => {
-          const c = USER_COLORS[u];
-          return (
+      {/* 3. Session Info Bar */}
+      <div className="w-full bg-gray-900/60 border-b border-gray-800 px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500 uppercase font-semibold text-[11px]">Choose Session Simulator:</span>
+          {USERS.map(u => (
             <button key={u} onClick={() => handleUserSwitch(u)}
-              className={`px-3 py-1 rounded text-xs font-semibold transition-all border ${u === activeUser ? `${c.bg} text-white ${c.border} shadow-lg` : "bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500"}`}>
+              className={`px-3 py-1 rounded text-xs font-bold border transition-all ${u === activeUser ? `${USER_COLORS[u].bg} text-white ${USER_COLORS[u].border}` : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"}`}>
               {u}
             </button>
-          );
-        })}
-        <div className={`ml-auto flex items-center gap-2 px-3 py-1 rounded-full text-xs ${uc.badge} border ${uc.border}`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${uc.bg} animate-pulse`} /> {activeUser}
+          ))}
+        </div>
+        <div className={`px-3 py-1 rounded-full text-xs font-mono border ${uc.badge} ${uc.border} flex items-center gap-1.5`}>
+          <div className={`w-2 h-2 rounded-full ${uc.bg} animate-pulse`} /> Active: {activeUser}
         </div>
       </div>
 
-      {/* Layout Content */}
-      <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden" style={{ minHeight: 0 }}>
-        {/* Left repo file view */}
-        <div className="col-span-3 bg-gray-900/50 border-r border-gray-800 flex flex-col overflow-hidden">
-          <div className="px-3 py-2 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider flex items-center justify-between">
-            <span className="flex items-center gap-2"><FileText size={10} /> Repository Files</span>
-            <button onClick={() => setAddModalOpen(true)} className="flex items-center gap-0.5 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-950/50 px-1.5 py-0.5 rounded transition-all text-[10px] font-bold">
-              <Plus size={10} /> Add File
+      {/* 4. Core Layout Workspace */}
+      <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden min-h-0">
+        
+        {/* Left Side: Repo List */}
+        <div className="col-span-3 bg-gray-900/20 border-r border-gray-800 flex flex-col overflow-hidden">
+          <div className="px-3 py-2 border-b border-gray-800 text-gray-400 font-bold flex items-center justify-between bg-gray-900/40">
+            <span className="flex items-center gap-1.5"><FileText size={12} /> Repository Explorer</span>
+            <button onClick={() => setAddModalOpen(true)} className="flex items-center gap-0.5 text-emerald-400 border border-emerald-500/40 bg-emerald-950/20 hover:bg-emerald-950/60 px-2 py-0.5 rounded transition-all text-[11px]">
+              <Plus size={11} /> File
             </button>
           </div>
           <div className="flex-1 overflow-y-auto">
             {files.map(file => {
               const bc = BRANCH_META[file.current_branch];
               const byOther = file.locked_by && file.locked_by !== activeUser;
-              const byMe = file.locked_by === activeUser;
               return (
                 <div key={file.id} onClick={() => selectFile(file)}
-                  className={`px-3 py-2.5 border-b border-gray-800/60 cursor-pointer transition-all border-l-2 ${selectedId === file.id ? "bg-gray-800/80 " + uc.border : "border-transparent hover:bg-gray-800/40"}`}>
+                  className={`px-3 py-3 border-b border-gray-800/60 cursor-pointer transition-all border-l-2 ${selectedId === file.id ? "bg-gray-800/60 " + uc.border : "border-transparent hover:bg-gray-900/40"}`}>
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-semibold ${selectedId === file.id ? "text-white" : "text-gray-300"}`}>{file.name}</span>
-                    {byOther && <Lock size={9} className="text-red-400" />}
-                    {byMe    && <Lock size={9} className={uc.text} />}
+                    {file.locked_by && <Lock size={10} className={byOther ? "text-red-400" : uc.text} />}
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className={`flex items-center gap-1 text-xs ${bc.color}`}><div className={`w-1.5 h-1.5 rounded-full ${bc.dot}`} />{bc.label}</span>
-                    {byOther && <span className="text-xs text-red-400/70">🔒 {file.locked_by}</span>}
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`flex items-center gap-1 text-[11px] ${bc.color}`}><div className={`w-1.5 h-1.5 rounded-full ${bc.dot}`} />{bc.label}</span>
+                    {file.locked_by && <span className="text-[10px] px-1 rounded bg-gray-950 text-gray-500">locked: {file.locked_by}</span>}
                   </div>
                 </div>
               );
@@ -446,65 +426,48 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Center Editor */}
-        <div className="col-span-5 flex flex-col border-r border-gray-800 overflow-hidden relative">
-          <div className="px-3 py-2 border-b border-gray-800 flex items-center justify-between bg-gray-900/60">
-            <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wider">
-              <Code2 size={10} /> Editor
-              {selectedFile && <span className={`font-bold ${uc.text}`}>{selectedFile.name}</span>}
+        {/* Middle Side: Editor Workspace */}
+        <div className="col-span-5 flex flex-col border-r border-gray-800 overflow-hidden relative bg-gray-950">
+          <div className="px-3 py-2 border-b border-gray-800 flex items-center justify-between bg-gray-900/40">
+            <div className="flex items-center gap-2 text-gray-400 text-xs">
+              <Code2 size={12} /> Working Copy: {selectedFile ? <span className={`font-bold ${uc.text}`}>{selectedFile.name}</span> : <span className="text-gray-600">None</span>}
             </div>
-            {selectedFile && (
+            {selectedFile && selectedFile.locked_by === activeUser && (
               <div className="flex items-center gap-1.5">
-                {selectedFile.locked_by === activeUser && (
-                  <button onClick={() => releaseLock(selectedFile.id)}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-amber-400 border border-gray-700 hover:border-amber-500 transition-all">
-                    <Unlock size={9} /> Release
-                  </button>
-                )}
-                {!isLockedByOther && selectedFile.locked_by === activeUser && (
-                  <button onClick={handleSave}
-                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs border transition-all ${useLive ? "bg-indigo-700 hover:bg-indigo-600 border-indigo-500 text-indigo-100" : "bg-emerald-700 hover:bg-emerald-600 border-emerald-500 text-white"}`}>
-                    {useLive ? <><Zap size={9} /> Save & Auto-Push</> : <><Save size={9} /> Save & Push to Dev</>}
-                  </button>
-                )}
+                <button onClick={() => releaseLock(selectedFile.id)} className="px-2 py-0.5 rounded text-[11px] text-gray-400 hover:text-amber-400 border border-gray-700 hover:border-amber-500 transition-all">Release</button>
+                <button onClick={handleSave} className="px-2.5 py-1 rounded text-[11px] bg-indigo-600 hover:bg-indigo-500 border border-indigo-400 font-bold text-white flex items-center gap-1">
+                  <Save size={11} /> Save & Sync
+                </button>
               </div>
             )}
           </div>
 
           {!selectedFile ? (
-            <div className="flex-1 flex items-center justify-center text-gray-700 flex-col gap-2"><FileText size={24} /><span className="text-xs">Select a file to edit</span></div>
+            <div className="flex-1 flex items-center justify-center text-gray-600 flex-col gap-1.5"><FileText size={20} className="opacity-40" /><span>Select a source code file from explorer</span></div>
           ) : isLockedByOther ? (
-            <div className="flex-1 flex flex-col">
-              <div className="m-3 px-3 py-2.5 bg-red-950/40 border border-red-500/40 rounded flex items-center gap-2">
-                <AlertTriangle size={13} className="text-red-400 flex-shrink-0" />
-                <div>
-                  <div className="text-red-400 text-xs font-bold">File Locked — Conflict Prevention Active</div>
-                  <div className="text-red-400/70 text-xs mt-0.5">Locked by <strong>{selectedFile.locked_by}</strong>. Editing disabled.</div>
-                </div>
+            <div className="flex-1 flex flex-col p-3">
+              <div className="p-3 bg-red-950/40 border border-red-500/40 rounded flex items-center gap-2 mb-3">
+                <AlertTriangle size={14} className="text-red-400" />
+                <div className="text-xs text-red-400"><strong>Protected:</strong> Mutex lock held by <strong>{selectedFile.locked_by}</strong>. View-only mode.</div>
               </div>
-              <pre className="flex-1 mx-3 mb-3 p-3 bg-gray-950/60 rounded border border-gray-800/60 text-gray-600 text-xs overflow-auto select-none">{selectedFile.content}</pre>
+              <pre className="flex-1 bg-gray-900 p-3 rounded border border-gray-800 text-gray-600 text-xs overflow-auto select-none leading-relaxed">{selectedFile.content}</pre>
             </div>
           ) : (
-            <textarea className="flex-1 resize-none bg-gray-950 text-gray-300 p-4 outline-none text-xs border-0 leading-relaxed"
-              style={{ fontFamily: "'Fira Code', monospace" }}
+            <textarea className="flex-1 resize-none bg-gray-950 text-gray-300 p-4 outline-none text-xs leading-relaxed font-mono"
               value={editorContent} onChange={e => setEditorContent(e.target.value)} spellCheck={false} />
           )}
 
-          {/* Terminal Console Overlay */}
+          {/* Terminal Box Overlay */}
           {termOpen && (
-            <div className="absolute inset-0 bg-gray-950/97 flex flex-col z-20 border border-indigo-500/30">
+            <div className="absolute inset-0 bg-gray-950/95 flex flex-col z-20 border-t border-indigo-500">
               <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800 bg-gray-900">
-                <div className="flex items-center gap-2 text-xs">
-                  <Terminal size={11} className="text-indigo-400" />
-                  <span className="text-indigo-300 font-bold">Auto-Push Terminal</span>
-                </div>
-                {termDone && <button onClick={() => setTermOpen(false)} className="text-xs text-gray-500 hover:text-gray-300 px-2 py-0.5 rounded border border-gray-700 hover:border-gray-500 transition-all">Close</button>}
+                <span className="text-indigo-400 font-bold flex items-center gap-1.5"><Terminal size={12} /> Live Sync Operations Terminal</span>
+                {termDone && <button onClick={() => setTermOpen(false)} className="text-[11px] bg-gray-800 border border-gray-700 hover:border-gray-500 px-2 py-0.5 rounded text-gray-300">Close terminal</button>}
               </div>
-              <div ref={termRef} className="flex-1 overflow-y-auto p-3 space-y-1.5">
+              <div ref={termRef} className="flex-1 overflow-y-auto p-4 space-y-1 bg-black font-mono text-xs">
                 {termLines.map((line, i) => (
-                  <div key={i} className={`flex items-start gap-2 text-xs ${line.status === "ok" ? "text-sky-400" : "text-red-400"}`}>
-                    <span className="text-gray-700">[{line.ts}]</span>
-                    <span>{line.status === "ok" ? "✓" : "✗"} {line.label}</span>
+                  <div key={i} className={line.status === "ok" ? "text-sky-400" : "text-red-400"}>
+                    <span className="text-gray-600">[{line.ts}]</span> {line.status === "ok" ? "✓" : "✗"} {line.label}
                   </div>
                 ))}
               </div>
@@ -512,31 +475,31 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Right Columns (Pipeline and system logs) */}
+        {/* Right Side: Pipelines & Logs */}
         <div className="col-span-4 flex flex-col overflow-hidden">
           <div className="border-b border-gray-800 flex-1 overflow-y-auto">
-            <div className="px-3 py-2 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider sticky top-0 bg-gray-950 z-10 flex items-center gap-2">
-              <Layers size={10} /> Deployment Pipeline
+            <div className="px-3 py-2 border-b border-gray-800 text-gray-400 font-bold sticky top-0 bg-gray-950 z-10 flex items-center gap-1.5 bg-gray-900/20">
+              <Layers size={12} /> CI/CD Deployment Mapping
             </div>
             {BRANCH_ORDER.map((branch, bIdx) => {
               const bc = BRANCH_META[branch];
               const branchFiles = files.filter(f => f.current_branch === branch);
               const nextBranch = BRANCH_ORDER[bIdx + 1];
               return (
-                <div key={branch} className={`border-b border-gray-800 ${bc.bg}`}>
-                  <div className={`px-3 py-1.5 flex items-center gap-2 border-b ${bc.border}`}>
+                <div key={branch} className={`border-b border-gray-800/80 ${bc.bg} pb-2`}>
+                  <div className={`px-3 py-1.5 flex items-center gap-2 border-b ${bc.border} mb-2 bg-gray-950/40`}>
                     <div className={`w-2 h-2 rounded-full ${bc.dot}`} />
-                    <span className={`text-xs font-bold ${bc.color} uppercase tracking-widest`}>{bc.label} Branch</span>
+                    <span className={`text-xs font-bold ${bc.color} uppercase tracking-wider`}>{bc.label} Environment</span>
                   </div>
-                  <div className="px-2 py-1.5 flex flex-col gap-1.5">
-                    {branchFiles.length === 0 && <div className="text-gray-700 text-xs py-0.5 px-2">— no files —</div>}
+                  <div className="px-3 flex flex-col gap-1.5">
+                    {branchFiles.length === 0 && <div className="text-gray-700 text-xs py-1 italic">No active files matching tier</div>}
                     {branchFiles.map(file => (
-                      <div key={file.id} className="bg-gray-900/70 rounded border border-gray-800/80 px-2 py-1.5 flex items-center justify-between gap-1">
-                        <span className="text-xs text-gray-300 truncate">{file.name}</span>
+                      <div key={file.id} className="bg-gray-900 border border-gray-800 rounded px-2.5 py-2 flex items-center justify-between gap-2">
+                        <span className="text-xs text-gray-300 truncate font-medium">{file.name}</span>
                         {nextBranch && (
                           <button onClick={() => promote(file.id, nextBranch)}
-                            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs border transition-all ${BRANCH_META[nextBranch].color} ${BRANCH_META[nextBranch].border} hover:bg-gray-800`}>
-                            <ChevronRight size={8} /> {BRANCH_META[nextBranch].label}
+                            className={`flex items-center gap-0.5 px-2 py-0.5 rounded text-[11px] border font-semibold transition-all ${BRANCH_META[nextBranch].color} ${BRANCH_META[nextBranch].border} hover:bg-gray-800`}>
+                            Promote <ChevronRight size={10} />
                           </button>
                         )}
                       </div>
@@ -547,41 +510,41 @@ export default function Dashboard() {
             })}
           </div>
 
-          <div className="h-44 bg-gray-950 flex flex-col overflow-hidden">
-            <div className="px-3 py-1.5 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider">Live System Logs</div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1 font-mono text-[11px]">
+          <div className="h-40 bg-gray-950 flex flex-col overflow-hidden border-t border-gray-800">
+            <div className="px-3 py-1.5 border-b border-gray-800 text-gray-500 font-semibold text-[11px]">SYSTEM LOGGER</div>
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-1 font-mono text-[11px]">
               {logs.map((log, idx) => (
-                <div key={idx} className={`flex gap-2 text-gray-400`}>
-                  <span className="text-gray-600">[{log.time}]</span>
-                  <span>{log.msg}</span>
+                <div key={idx} className="text-gray-400 flex gap-1.5 truncate">
+                  <span className="text-gray-600">[{log.time}]</span> <span>{log.msg}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
+
       </div>
 
-      {/* Modal Overlay Box */}
+      {/* File Creation Modal Box */}
       {addModalOpen && (
-        <div className="absolute inset-0 bg-gray-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border-2 border-indigo-500/50 rounded-lg w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="bg-gray-950 px-4 py-3 border-b border-gray-800 flex items-center gap-2 text-indigo-400">
-              <Plus size={14} /> <span className="font-bold text-xs uppercase tracking-wider">Create New Repository File</span>
+        <div className="absolute inset-0 bg-gray-950/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-indigo-500 rounded-lg w-full max-w-sm shadow-2xl">
+            <div className="bg-gray-950 px-4 py-2.5 border-b border-gray-800 flex items-center gap-2 text-indigo-400 font-bold">
+              <Plus size={14} /> New Repository Node
             </div>
-            <form onSubmit={handleCreateFile} className="p-4 space-y-3.5">
+            <form onSubmit={handleCreateFile} className="p-4 space-y-3">
               <div>
-                <label className="block text-gray-500 text-[11px] uppercase mb-1">File Name</label>
-                <input type="text" required placeholder="payment-service.js" value={newFileName} onChange={e => setNewFileName(e.target.value)}
-                  className="w-full bg-gray-950 border border-gray-700 rounded px-2.5 py-2 text-xs text-gray-200 outline-none focus:border-indigo-500 font-mono" />
+                <label className="block text-gray-500 text-[10px] uppercase font-bold mb-1">Target Name</label>
+                <input type="text" required placeholder="config.json" value={newFileName} onChange={e => setNewFileName(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-700 rounded px-2.5 py-2 text-xs text-gray-200 outline-none font-mono focus:border-indigo-500" />
               </div>
               <div>
-                <label className="block text-gray-500 text-[11px] uppercase mb-1">Initial Template Content</label>
-                <textarea placeholder="// Initialize modules here..." value={newFileContent} onChange={e => setNewFileContent(e.target.value)} rows={4}
-                  className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-xs text-gray-300 outline-none focus:border-indigo-500 font-mono resize-none" />
+                <label className="block text-gray-500 text-[10px] uppercase font-bold mb-1">Boilerplate Raw Text</label>
+                <textarea placeholder="// content goes here" value={newFileContent} onChange={e => setNewFileContent(e.target.value)} rows={3}
+                  className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-xs text-gray-200 outline-none font-mono resize-none focus:border-indigo-500" />
               </div>
-              <div className="flex justify-end gap-2 pt-1 border-t border-gray-800/60">
-                <button type="button" onClick={() => setAddModalOpen(false)} className="px-3 py-1.5 rounded text-xs bg-gray-800 text-gray-400 border border-gray-700">Cancel</button>
-                <button type="submit" className="px-4 py-1.5 rounded text-xs bg-emerald-700 border border-emerald-500 text-white font-bold">Create File</button>
+              <div className="flex justify-end gap-2 pt-2 border-t border-gray-800">
+                <button type="button" onClick={() => setAddModalOpen(false)} className="px-3 py-1.5 rounded text-xs bg-gray-800 text-gray-400">Abort</button>
+                <button type="submit" className="px-4 py-1.5 rounded text-xs bg-emerald-700 text-white font-bold">Commit Creation</button>
               </div>
             </form>
           </div>
