@@ -39,8 +39,6 @@ const MOCK_FILES: GitFile[] = [
 
 function ts() { return new Date().toLocaleTimeString("en-US", { hour12: false }); }
 
-// ─── component ────────────────────────────────────────────────────────────────
-
 export default function Dashboard() {
   // data
   const [files, setFiles] = useState<GitFile[]>(MOCK_FILES);
@@ -51,7 +49,7 @@ export default function Dashboard() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editorContent, setEditorContent] = useState("");
 
-  // infra config
+  // infra config (Hamesha true rakha hai taaki panel dikhta rahe)
   const [infraOpen, setInfraOpen] = useState(true);
   const [neonConn, setNeonConn]   = useState("");
   const [ghToken, setGhToken]     = useState("");
@@ -83,7 +81,7 @@ export default function Dashboard() {
     setLogs(prev => [{ time: ts(), msg, type }, ...prev].slice(0, 40));
   }, []);
 
-  // ── Load files from API on mount (or use mock data) ───────────────────────
+  // Load files hook
   useEffect(() => {
     if (!useLive) { setFiles(MOCK_FILES); return; }
     setLoading(true);
@@ -97,11 +95,9 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, [useLive, addLog]);
 
-  // ── derived ───────────────────────────────────────────────────────────────
   const selectedFile = files.find(f => f.id === selectedId);
   const isLockedByOther = !!(selectedFile?.locked_by && selectedFile.locked_by !== activeUser);
 
-  // ── file selection ────────────────────────────────────────────────────────
   const selectFile = async (file: GitFile) => {
     setFiles(prev => prev.map(f => f.locked_by === activeUser && f.id !== file.id ? { ...f, locked_by: null } : f));
 
@@ -170,7 +166,6 @@ export default function Dashboard() {
     addLog(`${activeUser} promoted "${file.name}" ${BRANCH_META[file.current_branch].label} → ${BRANCH_META[toBranch].label}.`, "success");
   };
 
-  // ── infra actions ──────────────────────────────────────────────────────────
   const testDb = () => {
     if (!neonConn) { addLog("Neon connection string is empty.", "error"); return; }
     setDbStatus("testing");
@@ -193,7 +188,6 @@ export default function Dashboard() {
     }, 2000);
   };
 
-  // ── handle creation of a new file ──────────────────────────────────────────
   const handleCreateFile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFileName.trim()) return;
@@ -232,7 +226,6 @@ export default function Dashboard() {
     setAddModalOpen(false);
   };
 
-  // ── save / push ────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!selectedFile || selectedFile.locked_by !== activeUser) return;
 
@@ -308,7 +301,6 @@ export default function Dashboard() {
     return <XCircle size={12} className="text-red-400" />;
   };
 
-  // ── render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col relative" style={{ fontFamily: "'Fira Code', monospace", fontSize: 12 }}>
 
@@ -334,11 +326,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Infra Config Panel */}
+      {/* Infra Config Panel (Postgres and GitHub fields) */}
       {infraOpen && (
         <div className="bg-gray-900/95 border-b-2 border-indigo-500/50 px-4 py-3 z-20">
           <div className="grid grid-cols-12 gap-3">
-            {/* Neon */}
+            {/* Neon Postgres Connection Info */}
             <div className="col-span-5 bg-gray-950/80 rounded-lg border border-gray-800 p-3">
               <div className="flex items-center gap-2 mb-2.5">
                 <Database size={12} className="text-emerald-400" />
@@ -359,7 +351,7 @@ export default function Dashboard() {
               {dbStatus === "ok" && <div className="mt-2 text-xs text-emerald-400/70">✓ Latency: 42ms · Pool: 5/10 active</div>}
             </div>
 
-            {/* GitHub */}
+            {/* GitHub Webhook Info */}
             <div className="col-span-5 bg-gray-950/80 rounded-lg border border-gray-800 p-3">
               <div className="flex items-center gap-2 mb-2.5">
                 <Github size={12} className="text-gray-300" />
@@ -386,7 +378,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Toggle */}
+            {/* Live Mode Toggle */}
             <div className="col-span-2 bg-gray-950/80 rounded-lg border border-gray-800 p-3 flex flex-col justify-between">
               <div className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1">
                 <Zap size={11} className="text-amber-400" /> Data Source
@@ -421,10 +413,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Grid */}
+      {/* Layout Content */}
       <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden" style={{ minHeight: 0 }}>
-
-        {/* File List */}
+        {/* Left repo file view */}
         <div className="col-span-3 bg-gray-900/50 border-r border-gray-800 flex flex-col overflow-hidden">
           <div className="px-3 py-2 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider flex items-center justify-between">
             <span className="flex items-center gap-2"><FileText size={10} /> Repository Files</span>
@@ -455,17 +446,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Editor */}
+        {/* Center Editor */}
         <div className="col-span-5 flex flex-col border-r border-gray-800 overflow-hidden relative">
           <div className="px-3 py-2 border-b border-gray-800 flex items-center justify-between bg-gray-900/60">
             <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wider">
               <Code2 size={10} /> Editor
               {selectedFile && <span className={`font-bold ${uc.text}`}>{selectedFile.name}</span>}
-              {useLive && selectedFile && (
-                <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-400 border border-emerald-700/40 flex items-center gap-1">
-                  <Radio size={8} className="animate-pulse" /> live
-                </span>
-              )}
             </div>
             {selectedFile && (
               <div className="flex items-center gap-1.5">
@@ -504,52 +490,29 @@ export default function Dashboard() {
               value={editorContent} onChange={e => setEditorContent(e.target.value)} spellCheck={false} />
           )}
 
-          {/* Terminal Overlay */}
+          {/* Terminal Console Overlay */}
           {termOpen && (
             <div className="absolute inset-0 bg-gray-950/97 flex flex-col z-20 border border-indigo-500/30">
               <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800 bg-gray-900">
                 <div className="flex items-center gap-2 text-xs">
                   <Terminal size={11} className="text-indigo-400" />
                   <span className="text-indigo-300 font-bold">Auto-Push Terminal</span>
-                  <span className="text-gray-600">· {selectedFile?.name}</span>
                 </div>
                 {termDone && <button onClick={() => setTermOpen(false)} className="text-xs text-gray-500 hover:text-gray-300 px-2 py-0.5 rounded border border-gray-700 hover:border-gray-500 transition-all">Close</button>}
               </div>
               <div ref={termRef} className="flex-1 overflow-y-auto p-3 space-y-1.5">
-                <div className="text-gray-600 text-xs mb-3">$ execute git-push pipeline · {ts()}</div>
-                {termLines.map((line, i) => {
-                  const col = line.status === "ok" ? (i === termLines.length - 1 && termDone ? "text-emerald-400" : "text-sky-400") : "text-red-400";
-                  return (
-                    <div key={i} className={`flex items-start gap-2 text-xs ${col}`}>
-                      <span className="text-gray-700 flex-shrink-0">[{line.ts}]</span>
-                      <span className="flex-shrink-0">{line.status === "ok" ? "✓" : "✗"}</span>
-                      <span>{line.label}{line.detail ? ` — ${line.detail}` : ""}</span>
-                      <span className="text-gray-700 ml-auto">{line.durationMs}ms</span>
-                    </div>
-                  );
-                })}
-                {!termDone && termLines.length > 0 && (
-                  <div className="flex items-center gap-2 text-gray-600 text-xs mt-1">
-                    <Loader2 size={10} className="animate-spin" /> processing…
+                {termLines.map((line, i) => (
+                  <div key={i} className={`flex items-start gap-2 text-xs ${line.status === "ok" ? "text-sky-400" : "text-red-400"}`}>
+                    <span className="text-gray-700">[{line.ts}]</span>
+                    <span>{line.status === "ok" ? "✓" : "✗"} {line.label}</span>
                   </div>
-                )}
+                ))}
               </div>
-              {rawPayload && (
-                <div className="border-t border-gray-800">
-                  <div className="flex items-center justify-between px-3 py-1.5 bg-gray-900/80">
-                    <span className="text-xs text-amber-400 flex items-center gap-1"><Code2 size={10} /> JSON Payload → POST /api/git-push</span>
-                    <button onClick={copyPayload} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition-all">
-                      {copied ? <><Check size={9} className="text-emerald-400" /> Copied</> : <><Copy size={9} /> Copy</>}
-                    </button>
-                  </div>
-                  <pre className="text-xs text-gray-400 px-3 py-2 overflow-x-auto max-h-32 bg-gray-950" style={{ fontSize: 10 }}>{rawPayload}</pre>
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* Pipeline + Log */}
+        {/* Right Columns (Pipeline and system logs) */}
         <div className="col-span-4 flex flex-col overflow-hidden">
           <div className="border-b border-gray-800 flex-1 overflow-y-auto">
             <div className="px-3 py-2 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider sticky top-0 bg-gray-950 z-10 flex items-center gap-2">
@@ -564,107 +527,61 @@ export default function Dashboard() {
                   <div className={`px-3 py-1.5 flex items-center gap-2 border-b ${bc.border}`}>
                     <div className={`w-2 h-2 rounded-full ${bc.dot}`} />
                     <span className={`text-xs font-bold ${bc.color} uppercase tracking-widest`}>{bc.label} Branch</span>
-                    <span className="ml-auto text-gray-600 text-xs">{branchFiles.length} file{branchFiles.length !== 1 ? "s" : ""}</span>
                   </div>
                   <div className="px-2 py-1.5 flex flex-col gap-1.5">
                     {branchFiles.length === 0 && <div className="text-gray-700 text-xs py-0.5 px-2">— no files —</div>}
-                    {branchFiles.map(file => {
-                      const byOther = file.locked_by && file.locked_by !== activeUser;
-                      const byMe = file.locked_by === activeUser;
-                      return (
-                        <div key={file.id} className="bg-gray-900/70 rounded border border-gray-800/80 px-2 py-1.5 flex items-center justify-between gap-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <FileText size={9} className="text-gray-500 flex-shrink-0" />
-                            <span className="text-xs text-gray-300 truncate">{file.name}</span>
-                            {byOther && <Lock size={8} className="text-red-400 flex-shrink-0" />}
-                            {byMe    && <Lock size={8} className={`${uc.text} flex-shrink-0`} />}
-                          </div>
-                          {nextBranch && !byOther && (
-                            <button onClick={() => promote(file.id, nextBranch)}
-                              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs border flex-shrink-0 transition-all ${BRANCH_META[nextBranch].color} ${BRANCH_META[nextBranch].border} hover:bg-gray-800`}>
-                              <ChevronRight size={8} /> {BRANCH_META[nextBranch].label}
-                            </button>
-                          )}
-                          {byOther && nextBranch && <span className="text-red-400/50 text-[10px]">locked</span>}
-                        </div>
-                      );
-                    })}
+                    {branchFiles.map(file => (
+                      <div key={file.id} className="bg-gray-900/70 rounded border border-gray-800/80 px-2 py-1.5 flex items-center justify-between gap-1">
+                        <span className="text-xs text-gray-300 truncate">{file.name}</span>
+                        {nextBranch && (
+                          <button onClick={() => promote(file.id, nextBranch)}
+                            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs border transition-all ${BRANCH_META[nextBranch].color} ${BRANCH_META[nextBranch].border} hover:bg-gray-800`}>
+                            <ChevronRight size={8} /> {BRANCH_META[nextBranch].label}
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* System Streams Log Panel */}
           <div className="h-44 bg-gray-950 flex flex-col overflow-hidden">
-            <div className="px-3 py-1.5 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider flex items-center gap-2">
-              <Terminal size={10} /> Live System Logs
-            </div>
+            <div className="px-3 py-1.5 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider">Live System Logs</div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1 font-mono text-[11px]">
-              {logs.map((log, idx) => {
-                let color = "text-gray-400";
-                if (log.type === "success") color = "text-emerald-400";
-                if (log.type === "error")   color = "text-red-400";
-                if (log.type === "warn")    color = "text-amber-400";
-                if (log.type === "system")  color = "text-indigo-400 font-bold";
-
-                return (
-                  <div key={idx} className={`flex gap-2 leading-tight ${color}`}>
-                    <span className="text-gray-600 flex-shrink-0">[{log.time}]</span>
-                    <span>{log.msg}</span>
-                  </div>
-                );
-              })}
+              {logs.map((log, idx) => (
+                <div key={idx} className={`flex gap-2 text-gray-400`}>
+                  <span className="text-gray-600">[{log.time}]</span>
+                  <span>{log.msg}</span>
+                </div>
+              ))}
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* ─── ADD FILE MODAL DIALOG OVERLAY ─── */}
+      {/* Modal Overlay Box */}
       {addModalOpen && (
         <div className="absolute inset-0 bg-gray-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border-2 border-indigo-500/50 rounded-lg w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
+          <div className="bg-gray-900 border-2 border-indigo-500/50 rounded-lg w-full max-w-md shadow-2xl overflow-hidden">
             <div className="bg-gray-950 px-4 py-3 border-b border-gray-800 flex items-center gap-2 text-indigo-400">
-              <Plus size={14} />
-              <span className="font-bold text-xs uppercase tracking-wider">Create New Repository File</span>
+              <Plus size={14} /> <span className="font-bold text-xs uppercase tracking-wider">Create New Repository File</span>
             </div>
             <form onSubmit={handleCreateFile} className="p-4 space-y-3.5">
               <div>
                 <label className="block text-gray-500 text-[11px] uppercase mb-1">File Name</label>
-                <input 
-                  type="text"
-                  required
-                  placeholder="payment-service.js"
-                  value={newFileName}
-                  onChange={e => setNewFileName(e.target.value)}
-                  className="w-full bg-gray-950 border border-gray-700 rounded px-2.5 py-2 text-xs text-gray-200 outline-none focus:border-indigo-500 font-mono transition-colors"
-                />
+                <input type="text" required placeholder="payment-service.js" value={newFileName} onChange={e => setNewFileName(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-700 rounded px-2.5 py-2 text-xs text-gray-200 outline-none focus:border-indigo-500 font-mono" />
               </div>
               <div>
-                <label className="block text-gray-500 text-[11px] uppercase mb-1">Initial Template Content (Optional)</label>
-                <textarea 
-                  placeholder="// Initialize modules here..."
-                  value={newFileContent}
-                  onChange={e => setNewFileContent(e.target.value)}
-                  rows={4}
-                  className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-xs text-gray-300 outline-none focus:border-indigo-500 font-mono resize-none leading-relaxed transition-colors"
-                />
+                <label className="block text-gray-500 text-[11px] uppercase mb-1">Initial Template Content</label>
+                <textarea placeholder="// Initialize modules here..." value={newFileContent} onChange={e => setNewFileContent(e.target.value)} rows={4}
+                  className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-xs text-gray-300 outline-none focus:border-indigo-500 font-mono resize-none" />
               </div>
               <div className="flex justify-end gap-2 pt-1 border-t border-gray-800/60">
-                <button 
-                  type="button" 
-                  onClick={() => { setAddModalOpen(false); setNewFileName(""); setNewFileContent(""); }}
-                  className="px-3 py-1.5 rounded text-xs bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-500 hover:text-gray-200 transition-all"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-1.5 rounded text-xs bg-emerald-700 hover:bg-emerald-600 border border-emerald-500 text-white font-bold transition-all shadow-md"
-                >
-                  Create & Branch Dev
-                </button>
+                <button type="button" onClick={() => setAddModalOpen(false)} className="px-3 py-1.5 rounded text-xs bg-gray-800 text-gray-400 border border-gray-700">Cancel</button>
+                <button type="submit" className="px-4 py-1.5 rounded text-xs bg-emerald-700 border border-emerald-500 text-white font-bold">Create File</button>
               </div>
             </form>
           </div>
