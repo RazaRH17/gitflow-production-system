@@ -437,55 +437,86 @@ export default function Dashboard() {
             )}
           </div>
 
-        {/* Editor body — Responsive Theme Mode */}
+        {/* Editor body — Responsive Theme Mode via isLightMode */}
           {!selectedFile ? (
-            <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-gray-700 flex-col gap-2 bg-slate-50 dark:bg-gray-950">
+            <div className={`flex-1 flex items-center justify-center flex-col gap-2 ${
+              isLightMode ? 'bg-slate-50 text-slate-400' : 'bg-gray-950 text-gray-700'
+            }`}>
               <FileText size={24} />
               <span className="text-xs">Select a file to edit</span>
             </div>
           ) : isLockedByOther ? (
-            <div className="flex-1 flex flex-col bg-slate-50 dark:bg-gray-950">
-              <div className="m-3 px-3 py-2.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-500/40 rounded flex items-center gap-2">
-                <AlertTriangle size={13} className="text-red-500 dark:text-red-400 flex-shrink-0" />
+            <div className={`flex-1 flex flex-col ${isLightMode ? 'bg-slate-50' : 'bg-gray-950'}`}>
+              <div className={`m-3 px-3 py-2.5 border rounded flex items-center gap-2 ${
+                isLightMode 
+                  ? 'bg-red-50 border-red-200 text-red-600' 
+                  : 'bg-red-950/40 border-red-500/40 text-red-400'
+              }`}>
+                <AlertTriangle size={13} className="flex-shrink-0" />
                 <div>
-                  <div className="text-red-600 dark:text-red-400 text-xs font-bold">File Locked — Conflict Prevention Active</div>
-                  <div className="text-red-500/80 dark:text-red-400/70 text-xs mt-0.5">Locked by <strong>{selectedFile.locked_by}</strong>. Editing disabled.</div>
+                  <div className="text-xs font-bold">File Locked — Conflict Prevention Active</div>
+                  <div className={`text-xs mt-0.5 ${isLightMode ? 'text-red-500/80' : 'text-red-400/70'}`}>
+                    Locked by <strong>{selectedFile.locked_by}</strong>. Editing disabled.</div>
                 </div>
               </div>
-              <pre className="flex-1 mx-3 mb-3 p-3 bg-white dark:bg-black/60 rounded border border-slate-200 dark:border-gray-800/60 text-slate-700 dark:text-gray-600 text-xs overflow-auto select-none shadow-inner">{selectedFile.content}</pre>
+              <pre className={`flex-1 mx-3 mb-3 p-3 rounded text-xs overflow-auto select-none shadow-inner border ${
+                isLightMode 
+                  ? 'bg-white border-slate-200 text-slate-700' 
+                  : 'bg-black/60 border-gray-800/60 text-gray-400'
+              }`}>{selectedFile.content}</pre>
             </div>
           ) : (
-            <textarea className="flex-1 resize-none bg-white dark:bg-gray-950 text-slate-800 dark:text-gray-300 p-4 outline-none text-xs border-0 leading-relaxed shadow-inner focus:ring-0"
+            <textarea 
+              className={`flex-1 resize-none p-4 outline-none text-xs border-0 leading-relaxed shadow-inner focus:ring-0 ${
+                isLightMode 
+                  ? 'bg-white text-slate-800' 
+                  : 'bg-gray-950 text-gray-300'
+              }`}
               style={{ fontFamily: "'Fira Code', monospace" }}
-              value={editorContent} onChange={e => setEditorContent(e.target.value)} spellCheck={false} />
+              value={editorContent} 
+              onChange={e => setEditorContent(e.target.value)} 
+              spellCheck={false} 
+            />
           )}
 
-          {/* Terminal Overlay — always dark */}
+          {/* Terminal Overlay — Responsive Theme Mode via isLightMode */}
           {termOpen && (
-        <div className="absolute inset-0 bg-slate-50 flex flex-col z-20 border border-slate-200 shadow-xl rounded-lg">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 bg-slate-100">
-            <div className="flex items-center gap-2 text-xs">
-              <Terminal size={11} className="text-indigo-600" />
-              <span className="text-indigo-600 font-bold">Auto-Push Terminal</span>
-              <span className="text-slate-500">. {selectedFile?.name}</span>
-            </div>
-            {termDone && (
-              <button 
-                onClick={() => setTermOpen(false)} 
-                className="text-xs text-slate-600 hover:text-slate-800 px-2 py-0.5 rounded border border-slate-300 bg-white shadow-sm"
-              >
-                Close
-              </button>
-            )}
-          </div>
-          
-          <div ref={termRef} className="flex-1 overflow-y-auto p-3 space-y-1.5 font-mono text-xs bg-white text-slate-800">
-            <div className="text-slate-400 mb-3">$ execute git-push pipeline · {ts()}</div>
-            {termLines.map((line, i) => {
-              const col = line.status === "ok" 
-                ? (i === termLines.length - 1 && termDone ? "text-emerald-600 font-bold" : "text-sky-600") 
-                : "text-red-600";
-              return (
+            <div className={`absolute inset-0 flex flex-col z-20 border shadow-xl rounded-lg ${
+              isLightMode ? 'bg-slate-50 border-slate-200' : 'bg-gray-950 border-indigo-500/30'
+            }`}>
+              <div className={`flex items-center justify-between px-3 py-2 border-b ${
+                isLightMode ? 'border-slate-200 bg-slate-100' : 'border-gray-800 bg-gray-900'
+              }`}>
+                <div className="flex items-center gap-2 text-xs">
+                  <Terminal size={11} className={isLightMode ? 'text-indigo-600' : 'text-indigo-400'} />
+                  <span className={`font-bold ${isLightMode ? 'text-indigo-600' : 'text-indigo-300'}`}>Auto-Push Terminal</span>
+                  <span className={isLightMode ? 'text-slate-500' : 'text-gray-500'}>. {selectedFile?.name}</span>
+                </div>
+                {termDone && (
+                  <button 
+                    onClick={() => setTermOpen(false)} 
+                    className={`text-xs px-2 py-0.5 rounded border shadow-sm ${
+                      isLightMode 
+                        ? 'text-slate-600 hover:text-slate-800 border-slate-300 bg-white' 
+                        : 'text-gray-400 hover:text-gray-200 border-gray-700 bg-gray-800'
+                    }`}
+                  >
+                    Close
+                  </button>
+                )}
+              </div>
+              
+              <div ref={termRef} className={`flex-1 overflow-y-auto p-3 space-y-1.5 font-mono text-xs ${
+                isLightMode ? 'bg-white text-slate-800' : 'bg-gray-950 text-gray-300'
+              }`}>
+                <div className={isLightMode ? 'text-slate-400 mb-3' : 'text-gray-600 mb-3'}>$ execute git-push pipeline · {ts()}</div>
+                {termLines.map((line, i) => {
+                  const col = line.status === "ok" 
+                    ? (i === termLines.length - 1 && termDone 
+                        ? (isLightMode ? "text-emerald-600 font-bold" : "text-emerald-400 font-bold") 
+                        : (isLightMode ? "text-sky-600" : "text-sky-400")) 
+                    : (isLightMode ? "text-red-600" : "text-red-400");
+                  return (
                     <div key={i} className={`flex items-start gap-2 text-xs ${col}`}>
                       <span className="text-gray-700 flex-shrink-0">[{line.ts}]</span>
                       <span className="flex-shrink-0">{line.status === "ok" ? "✓" : "✗"}</span>
