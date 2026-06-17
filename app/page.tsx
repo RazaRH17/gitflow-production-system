@@ -592,17 +592,33 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* Activity Log — always dark */}
-          <div className="h-44 flex flex-col border-t border-gray-800 bg-gray-950">
-            <div className="px-3 py-1.5 border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider flex items-center gap-2">
-              <Terminal size={10} /> Activity Log
+         {/* Activity Log — Theme Responsive via isLightMode */}
+          <div className={`h-44 flex flex-col border-t ${
+            isLightMode ? 'border-slate-200 bg-white' : 'border-gray-800 bg-gray-950'
+          }`}>
+            <div className={`px-3 py-1.5 border-b text-xs uppercase tracking-wider flex items-center gap-2 ${
+              isLightMode ? 'border-slate-200 text-slate-500 bg-slate-50' : 'border-gray-800 text-gray-500'
+            }`}>
+              <Terminal size={10} className={isLightMode ? 'text-indigo-600' : ''} /> Activity Log
             </div>
             <div className="flex-1 overflow-y-auto px-2 py-1">
               {logs.map((log, i) => {
-                const col = log.type === "success" ? "text-emerald-400" : log.type === "error" ? "text-red-400" : log.type === "warn" ? "text-amber-400" : log.type === "system" ? "text-sky-400/70" : "text-gray-400";
+                // Dynamic colors for log lines based on theme mode
+                const col = log.type === "success" 
+                  ? (isLightMode ? "text-emerald-600 font-medium" : "text-emerald-400") 
+                  : log.type === "error" 
+                  ? (isLightMode ? "text-red-600 font-medium" : "text-red-400") 
+                  : log.type === "warn" 
+                  ? (isLightMode ? "text-amber-600 font-medium" : "text-amber-400") 
+                  : log.type === "system" 
+                  ? (isLightMode ? "text-sky-600" : "text-sky-400/70") 
+                  : (isLightMode ? "text-slate-600" : "text-gray-400");
+                
                 return (
-                  <div key={i} className="flex gap-2 text-xs mb-0.5">
-                    <span className="text-gray-700 flex-shrink-0">{log.time}</span>
+                  <div key={i} className="flex gap-2 text-xs mb-0.5 font-mono">
+                    <span className={isLightMode ? 'text-slate-400 flex-shrink-0' : 'text-gray-700 flex-shrink-0'}>
+                      {log.time}
+                    </span>
                     <span className={col}>{log.msg}</span>
                   </div>
                 );
