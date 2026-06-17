@@ -51,6 +51,14 @@ function ts() { return new Date().toLocaleTimeString("en-US", { hour12: false })
 export default function Dashboard() {
   // ── theme ──────────────────────────────────────────────────────────────────
   const [isLightMode, setIsLightMode] = useState(false);
+  // 🌟 FIRST TIME REFRESH/LOAD SYNC HOOK — Add exactly here
+  useEffect(() => {
+    if (!isLightMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
 
   // ── helpers: theme-aware class builder ────────────────────────────────────
   // Returns the first arg in light mode, second in dark mode.
