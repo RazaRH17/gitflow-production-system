@@ -258,12 +258,23 @@ export default function Dashboard() {
 
           {/* ── Light/Dark Toggle Button ── */}
           <button
-            onClick={() => setIsLightMode(v => !v)}
+            onClick={() => {
+              setIsLightMode(v => {
+                const nextMode = !v;
+                // Core HTML element par class toggle taaki globals.css trigger ho ske
+                if (nextMode) {
+                  document.documentElement.classList.remove('dark');
+                } else {
+                  document.documentElement.classList.add('dark');
+                }
+                return nextMode;
+              });
+            }}
             title={isLightMode ? "Switch to Dark Mode" : "Switch to Light Mode"}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border font-semibold transition-all duration-200 ${
               isLightMode
-                ? "bg-gray-900 border-gray-700 text-gray-200 hover:bg-gray-800"
-                : "bg-white border-gray-300 text-gray-800 hover:bg-gray-100"
+                ? "bg-white border-gray-300 text-gray-800 hover:bg-gray-100" // Light mode me button white hoga
+                : "bg-gray-900 border-gray-700 text-gray-200 hover:bg-gray-800" // Dark mode me button dark hoga
             }`}
           >
             {isLightMode ? <Moon size={11} /> : <Sun size={11} />}
