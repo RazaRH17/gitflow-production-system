@@ -86,14 +86,14 @@ export default function Dashboard() {
       .then(r => r.json())
       .then(({ files: dbFiles, seeded }) => {
         setFiles(dbFiles);
-        addLog(seeded ? "DB seeded with default files." : `Loaded ${dbFiles.length} files from Neon DB.`, "success");
+        addLog(seeded ? "DB seeded with default (files || [])." : `Loaded ${db(files || []).length} files from Neon DB.`, "success");
       })
       .catch(e => addLog(`DB fetch failed: ${e.message}`, "error"))
       .finally(() => setLoading(false));
   }, [useLive, addLog]);
 
   // ── derived ───────────────────────────────────────────────────────────────
-  const selectedFile = files.find(f => f.id === selectedId);
+  const selectedFile = (files || []).find(f => f.id === selectedId);
   const isLockedByOther = !!(selectedFile?.locked_by && selectedFile.locked_by !== activeUser);
 
   // ── file selection ────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ export default function Dashboard() {
   };
 
   const releaseLock = async (fileId: number) => {
-    const file = files.find(f => f.id === fileId);
+    const file = (files || []).find(f => f.id === fileId);
     if (!file || file.locked_by !== activeUser) return;
 
     if (useLive) {
@@ -143,7 +143,7 @@ export default function Dashboard() {
   };
 
   const promote = async (fileId: number, toBranch: Branch) => {
-    const file = files.find(f => f.id === fileId);
+    const file = (files || []).find(f => f.id === fileId);
     if (!file) return;
     if (file.locked_by && file.locked_by !== activeUser) {
       addLog(`Cannot promote "${file.name}" — locked by ${file.locked_by}.`, "error");
@@ -389,7 +389,7 @@ export default function Dashboard() {
             <FileText size={10} /> Repository Files
           </div>
           <div className="flex-1 overflow-y-auto">
-            {files.map(file => {
+            {(files || []).map(file => {
               const bc = BRANCH_META[file.current_branch];
               const byOther = file.locked_by && file.locked_by !== activeUser;
               const byMe = file.locked_by === activeUser;
@@ -513,18 +513,18 @@ export default function Dashboard() {
             </div>
             {BRANCH_ORDER.map((branch, bIdx) => {
               const bc = BRANCH_META[branch];
-              const branchFiles = files.filter(f => f.current_branch === branch);
+              const branchFiles = (files || []).filter(f => f.current_branch === branch);
               const nextBranch = BRANCH_ORDER[bIdx + 1];
               return (
                 <div key={branch} className={`border-b border-gray-800 ${bc.bg}`}>
                   <div className={`px-3 py-1.5 flex items-center gap-2 border-b ${bc.border}`}>
                     <div className={`w-2 h-2 rounded-full ${bc.dot}`} />
                     <span className={`text-xs font-bold ${bc.color} uppercase tracking-widest`}>{bc.label} Branch</span>
-                    <span className="ml-auto text-gray-600 text-xs">{branchFiles.length} file{branchFiles.length !== 1 ? "s" : ""}</span>
+                    <span className="ml-auto text-gray-600 text-xs">{branch(files || []).length} file{branch(files || []).length !== 1 ? "s" : ""}</span>
                   </div>
                   <div className="px-2 py-1.5 flex flex-col gap-1.5">
-                    {branchFiles.length === 0 && <div className="text-gray-700 text-xs py-0.5 px-2">— no files —</div>}
-                    {branchFiles.map(file => {
+                    {branch(files || []).length === 0 && <div className="text-gray-700 text-xs py-0.5 px-2">— no files —</div>}
+                    {branch(files || []).map(file => {
                       const byOther = file.locked_by && file.locked_by !== activeUser;
                       const byMe = file.locked_by === activeUser;
                       return (
@@ -587,7 +587,7 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {files.map((f, i) => {
+              {(files || []).map((f, i) => {
                 const bc = BRANCH_META[f.current_branch];
                 const lc = f.locked_by ? USER_COLORS[f.locked_by as ActiveUser] : null;
                 return (
