@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 🌟 Jab Light Mode active ho, toh black lines aur dark backgrounds ko force-override karo */
+html:not(.dark) .border-gray-800,
+html:not(.dark) [className*="border-gray-800"],
+html:not(.dark) div[class*="border-gray-800"] {
+  border-color: #e2e8f0 !important; /* Tailwind slate-200 (Clean light grey borders) */
+}
+
+/* Base components background override for light mode panels */
+html:not(.dark) .bg-gray-950,
+html:not(.dark) [className*="bg-gray-950"] {
+  background-color: #f8fafc !important; /* Soft white/slate background */
+}
