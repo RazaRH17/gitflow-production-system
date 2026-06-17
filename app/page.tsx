@@ -531,33 +531,6 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-              {/* LOWER JSON PAYLOAD BLOCK — Yahan exact sahi jagah par add ho gaya */}
-            {rawPayload && (
-              <div className={`border-t font-mono text-xs ${
-                isLightMode ? 'border-slate-200 bg-slate-50' : 'border-gray-800 bg-black'
-              }`}>
-                <div className={`px-3 py-1.5 border-b flex items-center justify-between text-[11px] ${
-                  isLightMode ? 'border-slate-200 bg-slate-100/70 text-amber-700' : 'border-gray-800 bg-gray-900/40 text-amber-400'
-                }`}>
-                  <span className="font-bold">› JSON Payload → POST /api/git-push</span>
-                  <button 
-                    onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(rawPayload, null, 2));
-                    }}
-                    className={`text-xs hover:underline ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}
-                  >
-                    Copy
-                  </button>
-                </div>
-                <pre className={`p-3 max-h-48 overflow-y-auto text-[11px] leading-relaxed ${
-                  isLightMode ? 'bg-white text-slate-700' : 'bg-black/60 text-indigo-300'
-                }`}>
-                  {JSON.stringify(rawPayload, null, 2)}
-                </pre>
-              </div>
-            )}
-
-          </div>
               {rawPayload && (
                 <div className="border-t border-gray-800">
                   <div className="flex items-center justify-between px-3 py-1.5 bg-gray-900/80">
