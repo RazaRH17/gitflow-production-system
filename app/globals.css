@@ -2,15 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 🌟 Jab Light Mode active ho, toh black lines aur dark backgrounds ko force-override karo */
-html:not(.dark) .border-gray-800,
-html:not(.dark) [className*="border-gray-800"],
-html:not(.dark) div[class*="border-gray-800"] {
-  border-color: #e2e8f0 !important; /* Tailwind slate-200 (Clean light grey borders) */
+/* ==========================================================================
+   🚨 ULTIMATE THEME FIXER (Handles Hardcoded .bg-gray-950 and .border-gray-800)
+   ========================================================================== */
+
+/* 🌌 WHEN IN DARK MODE (Force deep dark colors even if classes are static) */
+html.dark .bg-gray-950,
+html.dark [class*="bg-gray-950"] {
+  background-color: #030712 !important; /* Perfect Tailwind gray-950 */
+}
+html.dark .border-gray-800,
+html.dark [class*="border-gray-800"] {
+  border-color: #1f2937 !important; /* Visible clean gray-800 borders */
 }
 
-/* Base components background override for light mode panels */
+/* ☀️ WHEN IN LIGHT MODE (Force clean white panel backgrounds & soft borders) */
 html:not(.dark) .bg-gray-950,
-html:not(.dark) [className*="bg-gray-950"] {
-  background-color: #f8fafc !important; /* Soft white/slate background */
+html:not(.dark) [class*="bg-gray-950"] {
+  background-color: #ffffff !important; /* White panels for grid blocks */
+}
+html:not(.dark) .border-gray-800,
+html:not(.dark) [class*="border-gray-800"] {
+  border-color: #e2e8f0 !important; /* Soft slate-200 lines instead of black */
+}
+
+/* Extra safety for the main screen body background if needed */
+html:not(.dark) body {
+  background-color: #f8fafc !important; /* Clean layout canvas background */
+  color: #0f172a !important;
 }
