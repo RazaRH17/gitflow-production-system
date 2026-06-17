@@ -2,26 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ==========================================
-   🚨 SYSTEM-WIDE INTERCEPTOR FOR LIGHT/DARK BORDERS
-   ========================================== */
+html:not(.dark) .border-gray-800,
+html:not(.dark) [className*="border-gray-800"],
+html:not(.dark) div[class*="border-gray-800"] {
+  border-color: #e2e8f0 !important; /* Soft slate-200 lines for light dashboard */
+}
 
-/* 🌌 Dark Mode Active State Overrides */
+html:not(.dark) .bg-gray-950,
+html:not(.dark) [className*="bg-gray-950"] {
+  background-color: #ffffff !important; /* Grid panels pure white ho jayenge */
+}
+
 html.dark .border-gray-800,
 html.dark [className*="border-gray-800"] {
-  border-color: #1f2937 !important; /* Proper visible gray-800 borders */
+  border-color: #1f2937 !important; /* Dark visible lines */
 }
 html.dark .bg-gray-950,
 html.dark [className*="bg-gray-950"] {
-  background-color: #030712 !important; /* Deep gray-950 panels */
-}
-
-/* ☀️ Light Mode Active State Overrides */
-html:not(.dark) .border-gray-800,
-html:not(.dark) [className*="border-gray-800"] {
-  border-color: #e2e8f0 !important; /* Soft slate-200 lines for layout grid */
-}
-html:not(.dark) .bg-gray-950,
-html:not(.dark) [className*="bg-gray-950"] {
-  background-color: #ffffff !important; /* Pure white crisp panel grid background */
+  background-color: #030712 !important; /* Midnight dark background */
 }
