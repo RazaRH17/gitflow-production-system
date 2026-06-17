@@ -2,32 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ==========================================================================
-   🚨 ULTIMATE THEME FIXER (Handles Hardcoded .bg-gray-950 and .border-gray-800)
-   ========================================================================== */
+/* ==========================================
+   🚨 SYSTEM-WIDE INTERCEPTOR FOR LIGHT/DARK BORDERS
+   ========================================== */
 
-/* 🌌 WHEN IN DARK MODE (Force deep dark colors even if classes are static) */
-html.dark .bg-gray-950,
-html.dark [class*="bg-gray-950"] {
-  background-color: #030712 !important; /* Perfect Tailwind gray-950 */
-}
+/* 🌌 Dark Mode Active State Overrides */
 html.dark .border-gray-800,
-html.dark [class*="border-gray-800"] {
-  border-color: #1f2937 !important; /* Visible clean gray-800 borders */
+html.dark [className*="border-gray-800"] {
+  border-color: #1f2937 !important; /* Proper visible gray-800 borders */
+}
+html.dark .bg-gray-950,
+html.dark [className*="bg-gray-950"] {
+  background-color: #030712 !important; /* Deep gray-950 panels */
 }
 
-/* ☀️ WHEN IN LIGHT MODE (Force clean white panel backgrounds & soft borders) */
-html:not(.dark) .bg-gray-950,
-html:not(.dark) [class*="bg-gray-950"] {
-  background-color: #ffffff !important; /* White panels for grid blocks */
-}
+/* ☀️ Light Mode Active State Overrides */
 html:not(.dark) .border-gray-800,
-html:not(.dark) [class*="border-gray-800"] {
-  border-color: #e2e8f0 !important; /* Soft slate-200 lines instead of black */
+html:not(.dark) [className*="border-gray-800"] {
+  border-color: #e2e8f0 !important; /* Soft slate-200 lines for layout grid */
 }
-
-/* Extra safety for the main screen body background if needed */
-html:not(.dark) body {
-  background-color: #f8fafc !important; /* Clean layout canvas background */
-  color: #0f172a !important;
+html:not(.dark) .bg-gray-950,
+html:not(.dark) [className*="bg-gray-950"] {
+  background-color: #ffffff !important; /* Pure white crisp panel grid background */
 }
