@@ -459,20 +459,31 @@ export default function Dashboard() {
 
           {/* Terminal Overlay — always dark */}
           {termOpen && (
-            <div className="absolute inset-0 bg-gray-950/97 flex flex-col z-20 border border-indigo-500/30">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800 bg-gray-900">
-                <div className="flex items-center gap-2 text-xs">
-                  <Terminal size={11} className="text-indigo-400" />
-                  <span className="text-indigo-300 font-bold">Auto-Push Terminal</span>
-                  <span className="text-gray-600">· {selectedFile?.name}</span>
-                </div>
-                {termDone && <button onClick={() => setTermOpen(false)} className="text-xs text-gray-500 hover:text-gray-300 px-2 py-0.5 rounded border border-gray-700 hover:border-gray-500 transition-all">Close</button>}
-              </div>
-              <div ref={termRef} className="flex-1 overflow-y-auto p-3 space-y-1.5">
-                <div className="text-gray-600 text-xs mb-3">$ execute git-push pipeline · {ts()}</div>
-                {termLines.map((line, i) => {
-                  const col = line.status === "ok" ? (i === termLines.length - 1 && termDone ? "text-emerald-400" : "text-sky-400") : "text-red-400";
-                  return (
+        <div className="absolute inset-0 bg-white/95 dark:bg-gray-950/97 flex flex-col z-20 border border-slate-200 dark:border-indigo-500/30 shadow-lg">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-gray-800 bg-slate-100 dark:bg-gray-900">
+            <div className="flex items-center gap-2 text-xs">
+              <Terminal size={11} className="text-indigo-600 dark:text-indigo-400" />
+              <span className="text-indigo-600 dark:text-indigo-300 font-bold">Auto-Push Terminal</span>
+              <span className="text-slate-400 dark:text-gray-600">. {selectedFile?.name}</span>
+            </div>
+            {termDone && (
+              <button 
+                onClick={() => setTermOpen(false)} 
+                className="text-xs text-slate-500 hover:text-slate-700 dark:text-gray-500 dark:hover:text-gray-300 px-2 py-0.5 rounded border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900"
+              >
+                Close
+              </button>
+            )}
+          </div>
+          
+          <div ref={termRef} className="flex-1 overflow-y-auto p-3 space-y-1.5 font-mono text-xs">
+            <div className="text-slate-500 dark:text-gray-600 mb-3">$ execute git-push pipeline · {ts()}</div>
+            {termLines.map((line, i) => {
+              // Dynamic colors jo light aur dark donon mein clear nazar ayein
+              const col = line.status === "ok" 
+                ? (i === termLines.length - 1 && termDone ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-sky-600 dark:text-sky-400") 
+                : "text-red-600 dark:text-red-400";
+              return (
                     <div key={i} className={`flex items-start gap-2 text-xs ${col}`}>
                       <span className="text-gray-700 flex-shrink-0">[{line.ts}]</span>
                       <span className="flex-shrink-0">{line.status === "ok" ? "✓" : "✗"}</span>
