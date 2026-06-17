@@ -437,22 +437,25 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Editor body — always dark/black regardless of mode */}
+        {/* Editor body — Responsive Theme Mode */}
           {!selectedFile ? (
-            <div className="flex-1 flex items-center justify-center text-gray-700 flex-col gap-2 bg-gray-950"><FileText size={24} /><span className="text-xs">Select a file to edit</span></div>
+            <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-gray-700 flex-col gap-2 bg-slate-50 dark:bg-gray-950">
+              <FileText size={24} />
+              <span className="text-xs">Select a file to edit</span>
+            </div>
           ) : isLockedByOther ? (
-            <div className="flex-1 flex flex-col bg-gray-950">
-              <div className="m-3 px-3 py-2.5 bg-red-950/40 border border-red-500/40 rounded flex items-center gap-2">
-                <AlertTriangle size={13} className="text-red-400 flex-shrink-0" />
+            <div className="flex-1 flex flex-col bg-slate-50 dark:bg-gray-950">
+              <div className="m-3 px-3 py-2.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-500/40 rounded flex items-center gap-2">
+                <AlertTriangle size={13} className="text-red-500 dark:text-red-400 flex-shrink-0" />
                 <div>
-                  <div className="text-red-400 text-xs font-bold">File Locked — Conflict Prevention Active</div>
-                  <div className="text-red-400/70 text-xs mt-0.5">Locked by <strong>{selectedFile.locked_by}</strong>. Editing disabled.</div>
+                  <div className="text-red-600 dark:text-red-400 text-xs font-bold">File Locked — Conflict Prevention Active</div>
+                  <div className="text-red-500/80 dark:text-red-400/70 text-xs mt-0.5">Locked by <strong>{selectedFile.locked_by}</strong>. Editing disabled.</div>
                 </div>
               </div>
-              <pre className="flex-1 mx-3 mb-3 p-3 bg-black/60 rounded border border-gray-800/60 text-gray-600 text-xs overflow-auto select-none">{selectedFile.content}</pre>
+              <pre className="flex-1 mx-3 mb-3 p-3 bg-white dark:bg-black/60 rounded border border-slate-200 dark:border-gray-800/60 text-slate-700 dark:text-gray-600 text-xs overflow-auto select-none shadow-inner">{selectedFile.content}</pre>
             </div>
           ) : (
-            <textarea className="flex-1 resize-none bg-gray-950 text-gray-300 p-4 outline-none text-xs border-0 leading-relaxed"
+            <textarea className="flex-1 resize-none bg-white dark:bg-gray-950 text-slate-800 dark:text-gray-300 p-4 outline-none text-xs border-0 leading-relaxed shadow-inner focus:ring-0"
               style={{ fontFamily: "'Fira Code', monospace" }}
               value={editorContent} onChange={e => setEditorContent(e.target.value)} spellCheck={false} />
           )}
